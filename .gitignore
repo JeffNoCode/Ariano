@@ -1,0 +1,24 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Test/cache
+.pytest_cache/
+.coverage
+
+# Saída gerada
+output/
+
+# C
+*.o
+*.out
+*.exe
+build/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

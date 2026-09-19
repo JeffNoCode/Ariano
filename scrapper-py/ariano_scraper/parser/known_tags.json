@@ -1,0 +1,62 @@
+[
+  {
+    "code": "AI",
+    "name": "Artificial Intelligence",
+    "aliases": ["ia", "inteligência artificial", "inteligencia artificial", "artificial intelligence", "ai"]
+  },
+  {
+    "code": "ML",
+    "name": "Machine Learning",
+    "aliases": ["machine learning", "aprendizado de máquina", "aprendizado de maquina", "ml"]
+  },
+  {
+    "code": "LLM",
+    "name": "Large Language Model",
+    "aliases": ["llm", "large language model", "modelo de linguagem", "modelos de linguagem"]
+  },
+  {
+    "code": "PYTHON",
+    "name": "Python",
+    "aliases": ["python", "linguagem python"]
+  },
+  {
+    "code": "JAVA",
+    "name": "Java",
+    "aliases": ["java", "linguagem java"]
+  },
+  {
+    "code": "SPRING",
+    "name": "Spring",
+    "aliases": ["spring framework", "spring"]
+  },
+  {
+    "code": "SPRING_BOOT",
+    "name": "Spring Boot",
+    "aliases": ["spring boot"]
+  },
+  {
+    "code": "WHATSAPP",
+    "name": "WhatsApp",
+    "aliases": ["whatsapp", "whats app"]
+  },
+  {
+    "code": "AUTOMATION",
+    "name": "Automation",
+    "aliases": ["automação", "automacao", "automation"]
+  },
+  {
+    "code": "POSTGRESQL",
+    "name": "PostgreSQL",
+    "aliases": ["postgresql", "postgres"]
+  },
+  {
+    "code": "IOT",
+    "name": "Internet of Things",
+    "aliases": ["iot", "internet das coisas", "internet of things"]
+  },
+  {
+    "code": "BLOCKCHAIN",
+    "name": "Blockchain",
+    "aliases": ["blockchain"]
+  }
+]

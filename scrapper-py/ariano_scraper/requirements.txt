@@ -1,0 +1,13 @@
+# Extração de texto/tabelas de PDF (MIT license, via pdfminer.six).
+pdfplumber>=0.11,<0.12
+
+# Validação de dados / schema do JSON de saída (MIT license).
+pydantic>=2.13,<3
+
+# Usado apenas por pdf/downloader.py (reservado para a próxima etapa
+# de scraping remoto; não é chamado pela CLI local do MVP). Apache-2.0.
+requests>=2.33,<3
+
+# Testes automatizados (MIT license). Não é necessário para rodar
+# `main.py`, só para rodar a suíte em tests/.
+pytest>=8,<9
