@@ -1,0 +1,26 @@
+ARIANO - Evidencia de teste integrado da API
+Data: 2026-09-29 04:05:06 -03:00
+Resultado: PASS
+
+docker compose ps:
+NAME        IMAGE                COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+api-api-1   api-api              "uvicorn ariano_api.ÔÇª"   api       17 seconds ago   Up 7 seconds (healthy)    0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+api-db-1    postgres:16-alpine   "docker-entrypoint.sÔÇª"   db        34 seconds ago   Up 15 seconds (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+
+Teste HTTP:
+{
+  "status": "PASS",
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "engine": "ok"
+  },
+  "actor_id": 5,
+  "document_id": 1,
+  "demand_id": 2,
+  "match_id": 1,
+  "score": 0.9,
+  "match_class": "RELATED",
+  "document_deduplicated": true
+}
+

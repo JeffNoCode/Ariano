@@ -1,0 +1,15 @@
+.git
+**/.env
+**/.env.*
+**/__pycache__
+**/.pytest_cache
+**/pytest-cache-files-*
+**/.venv
+**/build
+**/output
+**/*.pyc
+**/*.pyo
+**/documents
+**/tests
+docs
+

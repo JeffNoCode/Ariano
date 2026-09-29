@@ -46,8 +46,16 @@ exemplo de [`seed.sql`](../../api/db/seed.sql) e é provisionado pelo
 [saída bruta preservada](evidencia-banco-bruta.txt), registrada em 29/09/2026, mostra
 PostgreSQL 16.14 saudável e consulta real ao `information_schema`: 12 tabelas,
 74 colunas, 4 atores e 1 demanda. A data é posterior ao prazo de 19/09/2026.
-Essa verificação comprova o banco criado e populado, mas não a API em execução
-nem o fluxo ponta a ponta.
+Essa verificação comprova o banco criado e populado. A API foi verificada em
+uma execução separada.
+
+O [teste integrado da API](../../api/scripts/smoke_api.py) foi executado com
+os serviços em contêineres saudáveis. O [registro da execução](evidencia-api-bruta.txt)
+mostra `/health` com banco e motor OK, upload de PDF, cadastro de ator e demanda,
+matching com score 0,9 e consulta do resultado persistido. O procedimento para
+repetir o teste está no [README da API](../../api/README.md). Uma
+[execução ampliada](evidencia-api-ampliada.txt) também confirmou respostas 404,
+rejeição de peso inválido e de PDF corrompido.
 
 O Scrum Master é Raul Anthony de Sousa Muniz. O número do grupo será preenchido
 pela equipe antes do envio ao Teams.

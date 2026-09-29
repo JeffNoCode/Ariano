@@ -39,6 +39,39 @@ inválido derrubando o lote inteiro (falha rápida).
 
 ## Subindo
 
+### API completa no Docker
+
+Na pasta `api`, execute:
+
+```bash
+docker compose --profile full up -d --build --wait
+python scripts/smoke_api.py
+```
+
+O teste passa por `/health`, tags, relação entre tags, ator, upload e leitura de
+PDF, demanda, ranking calculado em C, persistência e detalhes do resultado.
+Também verifica que o mesmo PDF não é gravado duas vezes, que pesos inválidos
+e PDFs corrompidos são rejeitados e que IDs inexistentes retornam 404. Ele cria
+registros de teste com identificadores únicos no banco.
+O banco recebe `schema.sql` e `seed.sql` automaticamente **somente ao criar um
+volume vazio**; em um volume já existente, as migrações devem ser aplicadas
+separadamente. Se a porta 8000 estiver ocupada, defina `ARIANO_API_PORT` antes
+de subir os serviços e passe a URL correspondente em `--url` no teste.
+
+Para inspecionar uma falha:
+
+```bash
+docker compose --profile full ps
+docker compose --profile full logs --tail=100 api
+```
+
+O Docker compila uma `libariano.so` Linux com a mesma arquitetura da imagem
+Python. Isso evita o conflito entre a DLL Windows de 32 bits e o Python local
+de 64 bits. O teste cobre os endpoints implementados; a API ainda não oferece
+autenticação nem operações de edição e exclusão para um CRUD completo.
+
+### Execução local sem Docker para a API
+
 ```bash
 # 1. compile o motor como biblioteca compartilhada (Linux: .so; Windows: .dll)
 cd ../Matching-ariano-c/matching_engine && make shared && cd -
@@ -157,3 +190,4 @@ aqui:
   monta a demanda com pesos é uma chamada separada a `POST /demands` — de
   propósito, porque escolher peso e REQUIRED vs DESIRABLE é decisão humana.
 - **Paginação nos rankings** e cache de relações, se a base crescer.
+
