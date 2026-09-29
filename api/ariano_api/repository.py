@@ -138,6 +138,47 @@ def set_actor_tags(conn: Connection, actor_id: int, tags: Sequence[tuple[int, fl
             )
 
 
+def update_actor(
+    conn: Connection,
+    actor_id: int,
+    *,
+    actor_type: str,
+    name: str,
+    description: str | None,
+    document: str | None,
+    document_type: str | None,
+    status: str,
+    city: str | None,
+    state: str | None,
+    profile: dict[str, Any],
+    tags: Sequence[tuple[int, float]],
+) -> dict:
+    current = get_actor(conn, actor_id)
+    if current["actor_type"] != actor_type:
+        raise ValueError("o tipo do ator não pode ser alterado neste cadastro")
+    conn.execute(
+        """UPDATE tb_actors SET name=%s, description=%s, document=%s,
+           document_type=%s, status=%s, city=%s, state=%s, updated_at=now()
+           WHERE id=%s""",
+        (name, description, document, document_type, status, city, state, actor_id),
+    )
+    table = _SUBTYPE_TABLE[actor_type]
+    columns = _SUBTYPE_COLUMNS[actor_type]
+    assignments = ", ".join(f"{column}=%s" for column in columns)
+    conn.execute(
+        f"UPDATE {table} SET {assignments} WHERE actor_id=%s",
+        (*[profile.get(column) for column in columns], actor_id),
+    )
+    set_actor_tags(conn, actor_id, tags)
+    return get_actor(conn, actor_id)
+
+
+def delete_actor(conn: Connection, actor_id: int) -> None:
+    row = conn.execute("DELETE FROM tb_actors WHERE id=%s RETURNING id", (actor_id,)).fetchone()
+    if row is None:
+        raise NotFound(f"ator {actor_id} não existe")
+
+
 def get_actor(conn: Connection, actor_id: int) -> dict:
     actor = conn.execute(
         """
@@ -420,3 +461,4 @@ def get_match_details(conn: Connection, match_id: int) -> list[dict] | None:
         d["demand_tag_code"] = codes.get(d["demand_tag_id"])
         d["actor_tag_code"] = codes.get(d["actor_tag_id"]) if d.get("actor_tag_id") else None
     return details
+

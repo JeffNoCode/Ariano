@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ARIANO | Acesso</title>
+  <link rel="stylesheet" href="/app/styles.css">
+  <script src="/app/app.js" defer></script>
+</head>
+<body>
+  <div id="auth-view" class="auth-layout">
+    <div class="auth-brand"><strong>ARIANO</strong><span>Inteligência de oportunidades</span></div>
+    <main class="auth-panel">
+      <p class="eyebrow">Acesso ao sistema</p>
+      <h1 id="auth-title">Entrar</h1>
+      <form id="auth-form">
+        <label id="name-field" hidden>Nome<input id="auth-name" autocomplete="name" minlength="2" maxlength="120"></label>
+        <label>E-mail<input id="auth-email" type="email" autocomplete="email" required></label>
+        <label>Senha<input id="auth-password" type="password" autocomplete="current-password" required></label>
+        <p id="auth-message" class="message" role="alert" hidden></p>
+        <button id="auth-submit" class="button primary" type="submit">Entrar</button>
+      </form>
+      <button id="auth-mode" class="link-button" type="button">Criar conta</button>
+    </main>
+  </div>
+
+  <div id="app-view" class="app-layout" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand">ARIANO<small>Inteligência de oportunidades</small></div>
+      <nav aria-label="Navegação principal">
+        <button class="nav-item active" id="nav-actors" type="button">Atores</button>
+        <button class="nav-item" id="nav-users" type="button" hidden>Usuários</button>
+      </nav>
+      <div class="sidebar-bottom"><span id="signed-user"></span><button id="logout" type="button">Sair</button></div>
+    </aside>
+    <div class="main-area">
+      <header class="topbar"><span id="page-label">Atores</span><span id="role-label" class="role-badge"></span></header>
+      <main class="content">
+        <section id="actors-section">
+          <div class="section-heading"><div><h1>Atores</h1><p>Perfis e competências cadastrados</p></div><button id="new-actor" class="button primary" type="button" hidden>Novo ator</button></div>
+          <div class="toolbar"><input id="actor-search" type="search" placeholder="Buscar ator" aria-label="Buscar ator"><button id="refresh-actors" class="button secondary" type="button">Atualizar</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Cidade</th><th>Status</th><th>Competências</th><th>Ações</th></tr></thead><tbody id="actor-rows"></tbody></table></div>
+          <p id="actor-empty" class="empty" hidden>Nenhum ator encontrado.</p>
+        </section>
+        <section id="users-section" hidden>
+          <div class="section-heading"><div><h1>Usuários</h1><p>Perfis de acesso</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Situação</th><th>Ação</th></tr></thead><tbody id="user-rows"></tbody></table></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="actor-dialog">
+    <form id="actor-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Cadastro de ator</p><h2 id="actor-form-title">Novo ator</h2></div><button id="close-dialog" class="close-button" type="button" aria-label="Fechar">×</button></div>
+      <div class="form-grid">
+        <label>Tipo<select id="actor-type" required><option value="ORGANIZATION">Organização</option><option value="STARTUP">Startup</option><option value="SOLVER">Profissional</option><option value="GOVERNMENT_AGENCY">Órgão público</option></select></label>
+        <label>Status<select id="actor-status"><option value="ACTIVE">Ativo</option><option value="INACTIVE">Inativo</option><option value="SUSPENDED">Suspenso</option></select></label>
+        <label class="wide">Nome<input id="actor-name" required maxlength="180"></label>
+        <label class="wide">Descrição<textarea id="actor-description" rows="3"></textarea></label>
+        <label>Cidade<input id="actor-city"></label>
+        <label>UF<input id="actor-state" maxlength="2" minlength="2" placeholder="PE"></label>
+        <label id="profile-field" class="wide">Setor de atuação<input id="actor-profile"></label>
+        <label id="maturity-field" class="wide" hidden>Maturidade<select id="actor-maturity"><option value="">Não definida</option><option value="IDEATION">Ideação</option><option value="MVP">MVP</option><option value="GROWTH">Crescimento</option><option value="SCALE">Escala</option></select></label>
+      </div>
+      <h3>Competências</h3>
+      <div id="tag-options" class="tag-options"></div>
+      <p id="actor-form-message" class="message" role="alert" hidden></p>
+      <div class="dialog-actions"><button id="cancel-actor" class="button secondary" type="button">Cancelar</button><button id="save-actor" class="button primary" type="submit">Salvar</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
+

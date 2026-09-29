@@ -13,6 +13,22 @@ TagTypeName = Literal["REQUIRED", "DESIRABLE"]
 RelationTypeName = Literal["RELATED", "SYNONYM", "PART_OF"]
 DemandStatusName = Literal["OPEN", "EVALUATING", "CLOSED", "CANCELLED"]
 MaturityLevelName = Literal["IDEATION", "MVP", "GROWTH", "SCALE"]
+UserRoleName = Literal["ADMIN", "EDITOR", "VIEWER"]
+
+
+class RegisterIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    password: str = Field(min_length=12, max_length=128)
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class RoleUpdateIn(BaseModel):
+    role: UserRoleName
 
 
 class TagIn(BaseModel):
@@ -115,3 +131,4 @@ class MatchOptions(BaseModel):
         ),
     )
     persist: bool = Field(default=False, description="Gravar o ranking em tb_matches.")
+

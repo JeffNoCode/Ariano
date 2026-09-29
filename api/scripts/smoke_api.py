@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
+import os
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from uuid import uuid4
+
+AUTH_TOKEN = None
 
 
 def call(base: str, method: str, path: str, payload=None, *, expected: int = 200, content_type=None):
@@ -19,6 +23,8 @@ def call(base: str, method: str, path: str, payload=None, *, expected: int = 200
         else:
             data = payload
     headers = {"Content-Type": content_type} if content_type else {}
+    if AUTH_TOKEN:
+        headers["Authorization"] = f"Bearer {AUTH_TOKEN}"
     request = Request(base + path, data=data, headers=headers, method=method)
     try:
         with urlopen(request, timeout=130) as response:
@@ -51,6 +57,7 @@ def upload_pdf(base: str, pdf_path: Path, *, expected: int = 201):
 
 
 def main() -> None:
+    global AUTH_TOKEN
     parser = argparse.ArgumentParser(description="Smoke test da API ARIANO")
     parser.add_argument("--url", default="http://127.0.0.1:8000")
     parser.add_argument(
@@ -67,6 +74,11 @@ def main() -> None:
     base = args.url.rstrip("/")
     if not args.pdf.is_file():
         parser.error(f"PDF de teste não encontrado: {args.pdf}")
+    email = os.environ.get("ARIANO_TEST_ADMIN_EMAIL")
+    password = os.environ.get("ARIANO_TEST_ADMIN_PASSWORD") or getpass.getpass("Senha do administrador: ")
+    if not email or not password:
+        parser.error("defina ARIANO_TEST_ADMIN_EMAIL e informe a senha")
+    AUTH_TOKEN = call(base, "POST", "/auth/login", {"email": email, "password": password})["access_token"]
 
     health = call(base, "GET", "/health")
     assert health == {"status": "ok", "database": "ok", "engine": "ok"}

@@ -1,0 +1,27 @@
+ARIANO - Sprint 03 - verificacao local de 29/09/2026
+Resultado: PASS
+
+Banco e servicos
+- PostgreSQL: 14 tabelas no schema public
+- API e banco: healthy
+- GET /health: status=ok, database=ok, engine=ok
+
+Cadastro, login, perfis e CRUD
+- registration: VIEWER persisted
+- login: ok
+- role_change: VIEWER -> EDITOR -> VIEWER
+- viewer_write: HTTP 403
+- admin_users: HTTP 200
+- actor_crud: create/read/update/delete verified
+- deleted_actor: HTTP 404
+- logout: session revoked
+
+Regressao da integracao anterior
+- upload e deduplicacao de PDF: PASS
+- PDF invalido rejeitado: PASS
+- demanda e motor de matching: PASS
+- score: 0.9; classe: RELATED
+
+Os testes foram executados contra os conteineres locais com persistencia real.
+Credenciais e tokens nao foram incluidos neste registro.
+

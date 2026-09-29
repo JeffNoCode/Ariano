@@ -45,18 +45,34 @@ Na pasta `api`, execute:
 
 ```bash
 docker compose --profile full up -d --build --wait
-python scripts/smoke_api.py
+docker compose --profile full exec -T db psql -U ariano -d ariano -f /docker-entrypoint-initdb.d/03_auth.sql
+docker compose --profile full exec api python -m scripts.bootstrap_admin --email admin@ariano.local
 ```
 
-O teste passa por `/health`, tags, relação entre tags, ator, upload e leitura de
-PDF, demanda, ranking calculado em C, persistência e detalhes do resultado.
-Também verifica que o mesmo PDF não é gravado duas vezes, que pesos inválidos
-e PDFs corrompidos são rejeitados e que IDs inexistentes retornam 404. Ele cria
-registros de teste com identificadores únicos no banco.
-O banco recebe `schema.sql` e `seed.sql` automaticamente **somente ao criar um
-volume vazio**; em um volume já existente, as migrações devem ser aplicadas
-separadamente. Se a porta 8000 estiver ocupada, defina `ARIANO_API_PORT` antes
-de subir os serviços e passe a URL correspondente em `--url` no teste.
+O último comando pede uma senha de no mínimo 12 caracteres. Abra a interface
+em <http://localhost:8000/app/> com essa conta; a documentação da API está em
+<http://localhost:8000/docs>. O cadastro público cria apenas contas `VIEWER`.
+Um administrador pode promover contas a `EDITOR` ou `ADMIN` na tela Usuários.
+
+O PostgreSQL aplica `schema.sql`, `seed.sql` e a migração de autenticação
+automaticamente **somente em um volume vazio**. O segundo comando é idempotente
+e também atualiza volumes existentes. Os dados anteriores não são apagados.
+Se a porta 8000 estiver ocupada, defina `ARIANO_API_PORT` antes de subir os
+serviços e use a porta escolhida nos testes.
+
+Para repetir os testes em PowerShell, defina o e-mail da conta administrativa.
+Cada roteiro pedirá a senha sem exibi-la na tela:
+
+```powershell
+$env:ARIANO_TEST_ADMIN_EMAIL = 'admin@ariano.local'
+py scripts/smoke_sprint03.py
+py scripts/smoke_api.py
+Remove-Item Env:ARIANO_TEST_ADMIN_EMAIL
+```
+
+O primeiro roteiro valida cadastro, login, perfis, CRUD de atores, logout e
+respostas 401/403/404. O segundo valida PDF, demanda, motor C e ranking. Ambos
+criam dados de teste com identificadores únicos.
 
 Para inspecionar uma falha:
 
@@ -67,8 +83,7 @@ docker compose --profile full logs --tail=100 api
 
 O Docker compila uma `libariano.so` Linux com a mesma arquitetura da imagem
 Python. Isso evita o conflito entre a DLL Windows de 32 bits e o Python local
-de 64 bits. O teste cobre os endpoints implementados; a API ainda não oferece
-autenticação nem operações de edição e exclusão para um CRUD completo.
+de 64 bits.
 
 ### Execução local sem Docker para a API
 
@@ -80,6 +95,7 @@ cd ../Matching-ariano-c/matching_engine && make shared && cd -
 docker compose up -d
 psql "postgresql://ariano:ariano@localhost:5432/ariano" -f db/schema.sql
 psql "postgresql://ariano:ariano@localhost:5432/ariano" -f db/seed.sql   # opcional
+psql "postgresql://ariano:ariano@localhost:5432/ariano" -f db/migrations/003_auth.sql
 
 # 3. API
 python -m venv .venv && source .venv/bin/activate
@@ -98,10 +114,10 @@ O caminho pode ser ajustado por `ARIANO_ENGINE_LIB` no `.env`.
 
 ## Verificando que a integração funciona
 
-Com o `seed.sql` aplicado:
+Com o `seed.sql` aplicado e um token obtido em `POST /auth/login`:
 
 ```bash
-curl -X POST localhost:8000/demands/1/match -H 'Content-Type: application/json' -d '{}'
+curl -X POST localhost:8000/demands/1/match -H 'Content-Type: application/json' -H 'Authorization: Bearer SEU_TOKEN' -d '{}'
 ```
 
 O cenário do seed é construído para exercitar os três caminhos do motor, e os
@@ -123,9 +139,12 @@ gravado e a explicação tag a tag de cada score.
 | Método | Rota | O que faz |
 |---|---|---|
 | `GET` | `/health` | Banco e motor respondendo |
+| `POST` | `/auth/register`, `/auth/login`, `/auth/logout` | Cadastro, entrada e encerramento de sessão |
+| `GET` | `/auth/me` | Conta autenticada |
+| `GET` `PATCH` | `/users`, `/users/{id}/role` | Consulta e alteração de papéis pelo administrador |
 | `POST` `GET` | `/tags` | Cadastro de competências |
 | `PUT` | `/tags/relationships` | Relação direcionada `source → target` |
-| `POST` `GET` | `/actors`, `/actors/{id}` | Atores com suas competências e pesos |
+| `POST` `GET` `PUT` `DELETE` | `/actors`, `/actors/{id}` | CRUD de atores com suas competências e pesos |
 | `POST` `GET` | `/demands`, `/demands/{id}` | Demandas com tags REQUIRED/DESIRABLE |
 | `POST` | `/demands/{id}/match` | **Roda o motor**: threshold, top-k, `desirable_share`, `persist` |
 | `GET` | `/demands/{id}/matches` | Ranking já gravado |
@@ -144,6 +163,7 @@ gravado e a explicação tag a tag de cada score.
 | `tb_documents` | Um registro por PDF processado; `payload` jsonb guarda o JSON inteiro do scraper, hash único evita reprocessar. **Fora do ERD do time** — ver nota no topo de `schema.sql` |
 | `tb_demands`, `tb_demand_tags` | O que se pede (com `requester_id` apontando para o ator solicitante), tipo por tag (REQUIRED/DESIRABLE) e importância (peso > 0) |
 | `tb_matches` | Uma linha por (demanda, ator, versão do algoritmo). `score_details` guarda em **jsonb** tudo que o motor calculou além do score bruto — inclusive o detalhe por tag, que antes vivia numa tabela separada |
+| `tb_users`, `tb_sessions` | Contas com papéis ADMIN/EDITOR/VIEWER e sessões de acesso com token armazenado como hash; criadas pela migração da Sprint 03 |
 
 `algorithm_version` faz parte da chave única de `tb_matches`: rodar de novo com
 uma versão nova do motor não apaga o histórico da anterior, o que permite
@@ -182,9 +202,9 @@ aqui:
 
 ## O que ainda falta
 
-- **Autenticação.** Não há nenhuma. Não exponha esta API na internet como está.
-- **Migrations.** `schema.sql` é aplicado à mão; com o projeto andando, vale
-  trocar por Alembic antes da primeira mudança de schema em produção.
+- **Produção.** O login e os perfis são uma base local. Antes de expor o
+  serviço à internet, faltam HTTPS, limite de tentativas de login, política
+  de recuperação de senha, gestão de segredos e migrações automatizadas.
 - **Criar demanda a partir de documento automaticamente.** Hoje o `POST
   /documents` guarda o JSON e devolve as competências reconhecidas, mas quem
   monta a demanda com pesos é uma chamada separada a `POST /demands` — de
