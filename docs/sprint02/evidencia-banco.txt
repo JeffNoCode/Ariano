@@ -1,0 +1,35 @@
+ARIANO - Evidencia de banco criado - Sprint 02
+Data da execucao: 2026-09-29 02:54:07 -03:00
+Origem: Docker Desktop local, PostgreSQL 16.14
+
+docker compose ps:
+NAME       IMAGE                SERVICE   STATUS                 PORTS
+api-db-1   postgres:16-alpine   db        Up 2 minutes (healthy) 5432:5432
+
+Tabelas retornadas por information_schema.tables (schema public):
+tb_actor_tags
+tb_actors
+tb_demand_tags
+tb_demands
+tb_documents
+tb_government_agencies
+tb_matches
+tb_organizations
+tb_solvers
+tb_startups
+tb_tag_relationships
+tb_tags
+
+Resumo retornado por consulta SQL ao banco em execucao:
+tables=12, columns=74, actors=4, demands=1
+
+Consulta de verificacao:
+SELECT 'tables=' || (SELECT count(*) FROM information_schema.tables
+ WHERE table_schema='public' AND table_type='BASE TABLE')
+ || ', columns=' || (SELECT count(*) FROM information_schema.columns
+ WHERE table_schema='public')
+ || ', actors=' || (SELECT count(*) FROM tb_actors)
+ || ', demands=' || (SELECT count(*) FROM tb_demands);
+
+Limite: esta evidencia nao valida /health, API HTTP ou biblioteca C integrada.
+

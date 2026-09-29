@@ -41,10 +41,14 @@ As telas são protótipos e ainda não consomem os endpoints.
 
 O banco é definido por [`schema.sql`](../../api/db/schema.sql), recebe dados de
 exemplo de [`seed.sql`](../../api/db/seed.sql) e é provisionado pelo
-[`docker-compose.yml`](../../api/docker-compose.yml). Uma evidência de execução
-deve mostrar o container saudável, as 12 tabelas criadas e uma consulta real
-ao banco. Até essa verificação, os arquivos DDL não comprovam uma instância
-operacional.
+[`docker-compose.yml`](../../api/docker-compose.yml). A
+[evidência de banco](evidencia-banco.txt), com
+[saída bruta preservada](evidencia-banco-bruta.txt), registrada em 29/09/2026, mostra
+PostgreSQL 16.14 saudável e consulta real ao `information_schema`: 12 tabelas,
+74 colunas, 4 atores e 1 demanda. A data é posterior ao prazo de 19/09/2026.
+Essa verificação comprova o banco criado e populado, mas não a API em execução
+nem o fluxo ponta a ponta.
 
 O Scrum Master é Raul Anthony de Sousa Muniz. O número do grupo será preenchido
 pela equipe antes do envio ao Teams.
+

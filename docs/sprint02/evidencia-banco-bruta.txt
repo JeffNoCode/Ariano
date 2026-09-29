@@ -1,0 +1,25 @@
+ARIANO - Evidencia de banco criado - Sprint 02
+Data: 2026-09-29 02:54:07 -03:00
+PostgreSQL: 16.14
+
+docker compose ps:
+NAME       IMAGE                COMMAND                  SERVICE   CREATED         STATUS                   PORTS
+api-db-1   postgres:16-alpine   "docker-entrypoint.sÔÇª"   db        2 minutes ago   Up 2 minutes (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+
+Tabelas no schema public:
+tb_actor_tags
+tb_actors
+tb_demand_tags
+tb_demands
+tb_documents
+tb_government_agencies
+tb_matches
+tb_organizations
+tb_solvers
+tb_startups
+tb_tag_relationships
+tb_tags
+
+Resumo:
+tables=12, columns=74, actors=4, demands=1
+
