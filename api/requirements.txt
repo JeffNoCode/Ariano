@@ -1,0 +1,18 @@
+# API (MIT). Traz Starlette + Swagger/OpenAPI automáticos em /docs.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
+
+# Driver PostgreSQL moderno + pool de conexões (LGPL).
+psycopg[binary]>=3.2,<4
+psycopg-pool>=3.2,<4
+
+# Validação dos payloads (MIT). Mesma major usada pelo scraper.
+pydantic>=2.13,<3
+
+# Testes (MIT). httpx é usado pelo TestClient do FastAPI.
+pytest>=8,<9
+httpx>=0.28,<1
+
+# O motor de matching NÃO é uma dependência pip: é a libariano.so/.dll compilada
+# a partir de Matching-ariano-c/matching_engine (make shared), carregada via
+# ctypes, que é da biblioteca padrão.

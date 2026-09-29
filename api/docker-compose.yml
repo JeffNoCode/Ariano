@@ -1,0 +1,21 @@
+# Sobe só o PostgreSQL para desenvolvimento local:
+#   docker compose up -d
+#   psql "postgresql://ariano:ariano@localhost:5432/ariano" -f db/schema.sql
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ariano
+      POSTGRES_PASSWORD: ariano
+      POSTGRES_DB: ariano
+    ports:
+      - "5432:5432"
+    volumes:
+      - ariano_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ariano"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  ariano_pgdata:
