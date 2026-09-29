@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 const state = { token: sessionStorage.getItem("ariano_token"), user: null, actors: [], tags: [], editing: null, mode: "login" };
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const actorTypes = { SOLVER: "Solucionador", STARTUP: "Startup", ORGANIZATION: "Organização", GOVERNMENT_AGENCY: "Órgão público" };
-const actorStatuses = { ACTIVE: "Ativo", INACTIVE: "Inativo", PENDING: "Pendente" };
+const actorStatuses = { ACTIVE: "Ativo", INACTIVE: "Inativo", SUSPENDED: "Suspenso" };
 const userRoles = { ADMIN: "Administrador", EDITOR: "Editor", VIEWER: "Leitor" };
 
 async function api(path, options = {}) {
