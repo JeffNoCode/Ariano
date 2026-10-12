@@ -313,6 +313,25 @@ def get_demand(conn: Connection, demand_id: int) -> dict:
     return demand
 
 
+def list_demands(conn: Connection, limit: int = 50, offset: int = 0) -> list[dict]:
+    return conn.execute(
+        """
+        SELECT d.id, d.title, d.status, d.deadline, d.budget, d.currency,
+               d.document_id, d.created_at, a.name AS requester_name,
+               count(DISTINCT dt.tag_id) AS tag_count,
+               count(DISTINCT m.id) AS match_count
+          FROM tb_demands d
+          LEFT JOIN tb_actors a ON a.id = d.requester_id
+          LEFT JOIN tb_demand_tags dt ON dt.demand_id = d.id
+          LEFT JOIN tb_matches m ON m.demand_id = d.id
+         GROUP BY d.id, a.name
+         ORDER BY d.created_at DESC, d.id DESC
+         LIMIT %s OFFSET %s
+        """,
+        (limit, offset),
+    ).fetchall()
+
+
 def demand_tags_for_matching(conn: Connection, demand_id: int) -> list[tuple[int, str, float]]:
     rows = conn.execute(
         "SELECT tag_id, tag_type, weight FROM tb_demand_tags WHERE demand_id = %s ORDER BY tag_id",

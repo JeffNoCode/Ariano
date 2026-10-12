@@ -107,14 +107,24 @@ class DemandTagIn(BaseModel):
 
 class DemandIn(BaseModel):
     requester_id: int | None = None
-    title: str
-    description: str | None = None
+    title: str = Field(min_length=3, max_length=180)
+    description: str | None = Field(default=None, max_length=5000)
     status: DemandStatusName = "OPEN"
     deadline: date | None = None
-    budget: float | None = None
+    budget: float | None = Field(default=None, ge=0)
     currency: str = Field(default="BRL", min_length=3, max_length=3)
     document_id: int | None = None
-    tags: list[DemandTagIn] = []
+    tags: list[DemandTagIn] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _valid_demand(self) -> "DemandIn":
+        if not self.title.strip():
+            raise ValueError("o título da demanda é obrigatório")
+        ids = [tag.tag_id for tag in self.tags]
+        if len(ids) != len(set(ids)):
+            raise ValueError("uma competência não pode aparecer duas vezes na demanda")
+        self.title = self.title.strip()
+        return self
 
 
 class MatchOptions(BaseModel):

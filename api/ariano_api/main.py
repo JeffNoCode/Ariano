@@ -260,6 +260,14 @@ def create_demand(payload: DemandIn, user=Depends(editor_required), conn=Depends
     return repo.get_demand(conn, demand_id)
 
 
+@app.get("/demands", tags=["demandas"])
+def list_demands(
+    limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
+    user=Depends(current_user), conn=Depends(get_conn),
+):
+    return repo.list_demands(conn, limit, offset)
+
+
 @app.get("/demands/{demand_id}", tags=["demandas"])
 def get_demand(demand_id: int, user=Depends(current_user), conn=Depends(get_conn)):
     return repo.get_demand(conn, demand_id)
@@ -317,14 +325,19 @@ def match_details(match_id: int, user=Depends(current_user), conn=Depends(get_co
     summary="Envia um PDF, roda o scraper e guarda o JSON",
 )
 def ingest_document(file: UploadFile = File(...), user=Depends(editor_required), conn=Depends(get_conn)):
-    content = file.file.read()
+    content = file.file.read(10 * 1024 * 1024 + 1)
     if not content:
-        raise HTTPException(422, "arquivo vazio")
+        raise HTTPException(422, "PDF_VALIDATION: o arquivo está vazio")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(422, "PDF_VALIDATION: o PDF deve ter no máximo 10 MB")
+    if not content.startswith(b"%PDF-"):
+        raise HTTPException(422, "PDF_VALIDATION: selecione um PDF válido")
     try:
         payload = document_service.run_scraper(content, file.filename or "upload.pdf")
     except document_service.ScraperError as exc:
-    
-        raise HTTPException(422 if exc.returncode == 1 else 500, str(exc))
+        if exc.returncode == 1:
+            raise HTTPException(422, "PDF_VALIDATION: não foi possível ler o PDF. Confira se o arquivo está íntegro e contém texto.")
+        raise HTTPException(500, "não foi possível processar o PDF neste momento")
     except TimeoutError:
         raise HTTPException(504, "o scraper excedeu o tempo limite")
 
