@@ -118,8 +118,8 @@ class DemandIn(BaseModel):
 
     @model_validator(mode="after")
     def _valid_demand(self) -> "DemandIn":
-        if not self.title.strip():
-            raise ValueError("o título da demanda é obrigatório")
+        if len(self.title.strip()) < 3:
+            raise ValueError("o título da demanda deve ter pelo menos 3 caracteres")
         ids = [tag.tag_id for tag in self.tags]
         if len(ids) != len(set(ids)):
             raise ValueError("uma competência não pode aparecer duas vezes na demanda")

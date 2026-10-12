@@ -54,6 +54,7 @@ def create(base: str, pdf: Path) -> dict:
     invalid = [
         {"title": "Demanda sem competências", "tags": []},
         {"title": "   ", "tags": [{"tag_id": tag_id, "weight": 1}]},
+        {"title": "  a  ", "tags": [{"tag_id": tag_id, "weight": 1}]},
         {"title": "Peso inválido", "tags": [{"tag_id": tag_id, "weight": 0}]},
         {"title": "Tag repetida", "tags": [{"tag_id": tag_id, "weight": 1}, {"tag_id": tag_id, "weight": 1}]},
         {"title": "Orçamento inválido", "budget": -1, "tags": [{"tag_id": tag_id, "weight": 1}]},

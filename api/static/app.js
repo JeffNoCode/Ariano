@@ -18,7 +18,7 @@ async function api(path, options = {}) {
       : Array.isArray(body.detail) ? body.detail.map((item) => `${fieldName(item.loc)}: ${validationMessage(item)}`).join("; ")
       : response.status >= 500 ? "Não foi possível concluir a operação. Tente novamente." : `Não foi possível concluir a operação (${response.status}).`;
     if (response.status === 401 && state.user) { state.token = null; state.user = null; sessionStorage.removeItem("ariano_token"); showAuth(); }
-    throw new Error(message);
+    throw new Error(message.replace(/^PDF_VALIDATION:\s*/, ""));
   }
   return body;
 }
