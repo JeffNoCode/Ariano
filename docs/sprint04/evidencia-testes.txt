@@ -1,0 +1,15 @@
+ARIANO - Sprint 04 - evidÃªncia funcional
+Data: 2026-10-12 16:42:33 -03:00
+Resultado: PASS
+
+Fluxo criado:
+{"status": "PASS", "phase": "create", "demand_id": 8, "actor_id": 11, "document_id": 1, "match_id": 9, "score": 1.0, "validations_rejected": 7, "viewer_read": 200, "viewer_write": 403, "health": {"status": "ok", "database": "ok", "engine": "ok"}}
+
+ApÃ³s reinÃ­cio da API:
+{"status": "PASS", "phase": "verify_after_restart", "demand_id": 8, "document_id": 1, "persisted_matches": 3, "health": {"status": "ok", "database": "ok", "engine": "ok"}}
+
+ServiÃ§os:
+NAME        IMAGE                COMMAND                  SERVICE   CREATED          STATUS                            PORTS
+api-api-1   api-api              "uvicorn ariano_api.ÔÇª"   api       13 seconds ago   Up 2 seconds (health: starting)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+api-db-1    postgres:16-alpine   "docker-entrypoint.sÔÇª"   db        12 days ago      Up 12 minutes (healthy)           0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+

@@ -30,6 +30,7 @@ function fieldName(location = []) {
 
 function validationMessage(item) {
   const type = item.type || "";
+  if (type === "value_error" && item.msg) return item.msg.replace(/^Value error,\s*/, "");
   if (type.includes("missing")) return "campo obrigatório";
   if (type.includes("string_too_short") || type.includes("too_short")) return "informação muito curta ou lista vazia";
   if (type.includes("string_too_long")) return "texto acima do limite";

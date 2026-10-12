@@ -28,6 +28,8 @@ As competências dos atores vêm de `tb_actor_tags`; o vocabulário e as relaç�
 
 O roteiro `api/scripts/smoke_sprint04.py` cria um ator de teste, processa um PDF, cria uma demanda, calcula um ranking persistido e verifica as leituras. `api/scripts/run_sprint04_evidence.ps1` reinicia a API, faz novo login e verifica novamente documento, demanda, competências e resultados. Portanto a evidência não depende apenas do estado em memória do navegador. O PostgreSQL usa volume nomeado `ariano_pgdata`; reiniciar os serviços não apaga as tabelas. O roteiro grava o resultado em `docs/sprint04/evidencia-testes.txt` sem senha ou token.
 
+**Execução de 12/10/2026:** o roteiro terminou em `PASS`. Criou a demanda de teste **#8** ligada ao documento **#1**, calculou e gravou um ranking (ator de teste com score **1,0**), rejeitou **sete** entradas inválidas e confirmou leitura `200`/escrita `403` para um usuário `VIEWER`. Depois do reinício da API e de um novo login, a demanda #8, o documento #1 e **três resultados persistidos** foram lidos novamente. O endpoint `/health` respondeu `status=ok`, `database=ok`, `engine=ok` antes e depois do reinício. Veja a [evidência explicada](evidencia-resumida.md) e o [registro bruto](evidencia-testes.txt). Os testes unitários de validação e segurança executados localmente terminaram com **9 aprovados**.
+
 Para demonstração manual, salve uma demanda e anote seu número; atualize a página ou feche e reabra o navegador, faça login, entre em **Oportunidades** e abra a mesma demanda. O PDF vinculado, as competências e o ranking salvo devem aparecer. Também é possível reiniciar a API entre as duas etapas.
 
 ## 3. Validações e mensagens
@@ -50,7 +52,9 @@ O formulário mostra o erro perto da etapa afetada; a API também valida os dado
 
 Na barra lateral: **Oportunidades**, **Atores** e, para ADMIN, **Usuários**. Dentro de Oportunidades: lista -> formulário -> detalhe -> ranking, com retorno à lista. Um `VIEWER` pode consultar demandas e rankings, mas os comandos de criação e cálculo ficam ocultos e a API continua bloqueando a escrita. O fluxo utiliza os endpoints reais `POST /documents`, `GET /documents/{id}`, `POST /demands`, `GET /demands`, `GET /demands/{id}`, `POST /demands/{id}/match` e `GET /demands/{id}/matches`.
 
-**Evidências reproduzíveis:** `docs/sprint04/evidencia-testes.txt` (gerado pelo roteiro) e demonstração ao vivo em `http://localhost:8000/app/`. Os testes locais de validação ficam em `api/tests/test_demand_validation.py`. As telas não são protótipos: as alterações lidas após o reinício vêm do banco.
+**Evidências reproduzíveis:** [resumo da execução](evidencia-resumida.md), [resultado bruto](evidencia-testes.txt) e demonstração ao vivo em `http://localhost:8000/app/`. O teste do navegador terminou em `PASS` com uma conta `VIEWER`: percorreu lista -> detalhe -> lista, confirmou a ausência dos comandos de escrita e não encontrou rolagem horizontal no celular. Capturas: [lista no desktop](assets/lista-desktop.png), [detalhe no desktop](assets/detalhe-desktop.png), [lista no celular](assets/lista-celular.png) e [detalhe no celular](assets/detalhe-celular.png). Os testes locais de validação ficam em `api/tests/test_demand_validation.py`. As telas não são protótipos: as alterações lidas após o reinício vêm do banco.
+
+O banco local usado nos testes contém uma demanda antiga com título `a` (#7), criada quando a validação ainda aceitava esse valor. A versão atual rejeita títulos com menos de três caracteres; o registro anterior permanece apenas como dado de teste e aparece nas capturas da lista.
 
 ## 5. Execução local
 
@@ -70,13 +74,13 @@ O roteiro pede e-mail e senha sem mostrá-la no terminal. Não use `docker compo
 
 ## 6. Repositório e evolução
 
-Repositório: [JeffNoCode/Ariano](https://github.com/JeffNoCode/Ariano). As mudanças da Sprint 04 devem aparecer em commits separados para API/validação, interface/fluxo e documentação/evidência. A autoria real é preservada; não se atribuem contribuições retroativas aos demais integrantes.
+Repositório: [JeffNoCode/Ariano](https://github.com/JeffNoCode/Ariano). A Sprint 04 foi registrada em commits separados para API/validação, interface/fluxo, documentação e evidências. A autoria real é preservada; não se atribuem contribuições retroativas aos demais integrantes.
 
 ## 7. Dificuldades e próximos passos
 
 O fluxo já tinha serviços separados, mas as telas de documento, demanda e ranking ainda não estavam integradas. Foi necessário listar demandas pela API, adaptar o envio de formulário com arquivo, mapear as competências extraídas para o catálogo e buscar o ranking persistido ao reabrir uma demanda. A extração do PDF pode falhar em documentos digitalizados ou de baixa qualidade; por isso os campos são revisáveis e o cadastro manual permanece disponível.
 
-Próximos passos: ampliar os testes de navegação automatizada no navegador; paginar listas extensas; permitir edição/encerramento de demandas; melhorar segurança para implantação externa (HTTPS, segredos e proteção contra tentativas de login); evoluir o uso das relações entre competências. O armazenamento atual já representa relações dirigidas entre tags, mas **não** utiliza banco de grafos. Uma migração para tecnologia de grafos permanece uma possibilidade futura, não parte desta entrega.
+Próximos passos: ampliar a cobertura dos testes de navegação automatizada; limpar os dados de teste antes da apresentação; paginar listas extensas; permitir edição/encerramento de demandas; melhorar segurança para implantação externa (HTTPS, segredos e proteção contra tentativas de login); evoluir o uso das relações entre competências. O armazenamento atual já representa relações dirigidas entre tags, mas **não** utiliza banco de grafos. Uma migração para tecnologia de grafos permanece uma possibilidade futura, não parte desta entrega.
 
 ## Observação sobre a entrega acadêmica
 
