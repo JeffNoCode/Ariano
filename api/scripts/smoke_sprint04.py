@@ -17,7 +17,13 @@ def authenticate(base: str) -> None:
     password = os.environ.get("ARIANO_TEST_ADMIN_PASSWORD") or getpass.getpass("Senha do administrador: ")
     if not email or not password:
         raise SystemExit("Informe ARIANO_TEST_ADMIN_EMAIL e a senha do administrador")
-    smoke.AUTH_TOKEN = smoke.call(base, "POST", "/auth/login", {"email": email, "password": password})["access_token"]
+    try:
+        login = smoke.call(base, "POST", "/auth/login", {"email": email, "password": password})
+    except AssertionError as exc:
+        if "HTTP 401" in str(exc):
+            raise SystemExit("Conta ADMIN não reconhecida. Confira o e-mail e a senha usados na Sprint 03.") from None
+        raise
+    smoke.AUTH_TOKEN = login["access_token"]
 
 
 def create(base: str, pdf: Path) -> dict:
