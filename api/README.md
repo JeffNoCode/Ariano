@@ -74,6 +74,12 @@ O primeiro roteiro valida cadastro, login, perfis, CRUD de atores, logout e
 respostas 401/403/404. O segundo valida PDF, demanda, motor C e ranking. Ambos
 criam dados de teste com identificadores únicos.
 
+Para a Sprint 04, a tela **Oportunidades** integra PDF, revisão, demanda e
+ranking salvo. Execute `powershell -ExecutionPolicy Bypass -File
+scripts/run_sprint04_evidence.ps1` na pasta `api`: o roteiro testa o fluxo,
+reinicia a API e confirma que documento, demanda e ranking permanecem no banco.
+O resultado fica em `docs/sprint04/evidencia-testes.txt`.
+
 Para inspecionar uma falha:
 
 ```bash
@@ -145,7 +151,7 @@ gravado e a explicação tag a tag de cada score.
 | `POST` `GET` | `/tags` | Cadastro de competências |
 | `PUT` | `/tags/relationships` | Relação direcionada `source → target` |
 | `POST` `GET` `PUT` `DELETE` | `/actors`, `/actors/{id}` | CRUD de atores com suas competências e pesos |
-| `POST` `GET` | `/demands`, `/demands/{id}` | Demandas com tags REQUIRED/DESIRABLE |
+| `POST` `GET` | `/demands`, `/demands/{id}` | Cadastro, listagem e consulta de demandas com tags REQUIRED/DESIRABLE |
 | `POST` | `/demands/{id}/match` | **Roda o motor**: threshold, top-k, `desirable_share`, `persist` |
 | `GET` | `/demands/{id}/matches` | Ranking já gravado |
 | `GET` | `/matches/{id}/details` | Explicação do score, tag a tag |
@@ -205,9 +211,8 @@ aqui:
 - **Produção.** O login e os perfis são uma base local. Antes de expor o
   serviço à internet, faltam HTTPS, limite de tentativas de login, política
   de recuperação de senha, gestão de segredos e migrações automatizadas.
-- **Criar demanda a partir de documento automaticamente.** Hoje o `POST
-  /documents` guarda o JSON e devolve as competências reconhecidas, mas quem
-  monta a demanda com pesos é uma chamada separada a `POST /demands` — de
-  propósito, porque escolher peso e REQUIRED vs DESIRABLE é decisão humana.
+- **Decisão humana após a extração.** A interface já preenche uma nova demanda
+  a partir do PDF, mas a pessoa revisa os campos e define pesos e tipo de cada
+  competência antes de salvar. O scraper não decide essas regras sozinho.
 - **Paginação nos rankings** e cache de relações, se a base crescer.
 
