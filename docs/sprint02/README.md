@@ -18,7 +18,7 @@ flowchart LR
 A API é atualmente Python/FastAPI. Seus contratos HTTP, modelos de dados e
 fronteira com o motor permitem substituir sua implementação futuramente,
 inclusive por C, sem exigir alteração conceitual do banco ou do algoritmo.
-O scraper extrai texto nativo e usa regras/regex; não há OCR nem inferência por IA.
+O scraper extrai texto nativo com regras e expressões regulares; OCR e classificação probabilística não integram a versão atual.
 O matching em C é determinístico: pesos, relações direcionadas, threshold e
 ordenação estão detalhados no [README do motor](../../Matching-ariano-c/matching_engine/README.md).
 

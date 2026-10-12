@@ -10,7 +10,7 @@
 
 O primeiro módulo completo é **Oportunidades**. A pessoa entra no sistema, abre a lista de demandas, cadastra uma oportunidade, opcionalmente envia um edital em PDF, revisa os campos extraídos, escolhe as competências obrigatórias ou desejáveis e seus pesos, salva a demanda, calcula o ranking e consulta o resultado. Demandas e rankings anteriores podem ser reabertos pela lista. A navegação também leva às telas de atores e, para administradores, usuários.
 
-O PDF é um auxílio ao cadastro, não uma decisão automática: o scraper extrai título, prazo, orçamento e possíveis competências; uma pessoa confirma ou corrige esses dados e define os pesos antes de salvar. O cálculo do score é determinístico, realizado pela biblioteca em C a partir das competências do ator, da demanda e das relações entre tags. Não há modelo generativo atribuindo a nota. O detalhe por competência é armazenado junto ao resultado e pode ser consultado.
+O PDF auxilia o cadastro: o scraper extrai título, prazo, orçamento e possíveis competências; a equipe confirma ou corrige esses dados e define os pesos antes de salvar. A biblioteca em C calcula o score a partir das competências do ator, da demanda e das relações entre tags. O detalhe por competência é armazenado junto ao resultado e pode ser consultado.
 
 **Fluxo implementado:** login -> Oportunidades -> Nova demanda -> Ler PDF (opcional) -> Revisar e selecionar competências -> Salvar -> Calcular ranking -> Voltar à lista -> Reabrir demanda e ranking.
 
@@ -74,7 +74,7 @@ O roteiro pede e-mail e senha sem mostrá-la no terminal. Não use `docker compo
 
 ## 6. Repositório e evolução
 
-Repositório: [JeffNoCode/Ariano](https://github.com/JeffNoCode/Ariano). A Sprint 04 foi registrada em commits separados para API/validação, interface/fluxo, documentação e evidências. A autoria real é preservada; não se atribuem contribuições retroativas aos demais integrantes.
+Repositório: [JeffNoCode/Ariano](https://github.com/JeffNoCode/Ariano). A Sprint 04 está organizada em commits para API e validação, interface e fluxo, documentação e evidências.
 
 ## 7. Dificuldades e próximos passos
 
@@ -84,5 +84,5 @@ Próximos passos: ampliar a cobertura dos testes de navegação automatizada; li
 
 ## Observação sobre a entrega acadêmica
 
-Este Markdown é o registro individual da Sprint 04. A instrução da disciplina pede **um PDF único com as Sprints 01 a 04**; portanto, este arquivo ainda precisa ser incorporado à versão final em PDF antes do envio pelo Scrum Master. O número do grupo não foi informado pela equipe e não é inventado aqui. O texto e os resultados devem ser conferidos pelo grupo antes da submissão.
+A versão final para envio deve reunir as Sprints 01 a 04 em um único PDF, conforme a orientação da disciplina. O Scrum Master fará a submissão após a conferência do conteúdo e das evidências pela equipe.
 

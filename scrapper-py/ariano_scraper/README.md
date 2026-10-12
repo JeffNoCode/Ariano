@@ -7,8 +7,8 @@ PDF → validação → extração de texto → normalização → parsing (seç
 regex, competências) → validação Pydantic → JSON
 ```
 
-Nenhuma dependência paga é usada. Nenhuma API de LLM (OpenAI, Claude,
-Gemini) é usada nesta etapa. OCR ainda não está implementado — PDFs
+O processamento usa bibliotecas locais e não depende de serviços externos.
+OCR ainda não está implementado — PDFs
 sem camada de texto nativa são processados sem travar, mas com um
 aviso explícito no JSON de saída (`extraction_warnings`).
 
@@ -176,3 +176,4 @@ simular um documento escaneado, um PDF corrompido e um arquivo que não
 - **Competências reconhecidas são apenas as listadas em
   `parser/known_tags.json`.** Não há inferência semântica de novas
   competências não cadastradas nesta etapa.
+
