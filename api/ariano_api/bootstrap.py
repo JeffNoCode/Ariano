@@ -7,7 +7,8 @@ ao iniciar, garante que:
 
 1. o schema e as migrações estão aplicados (todos os arquivos são idempotentes:
    CREATE ... IF NOT EXISTS, CREATE OR REPLACE, ON CONFLICT DO NOTHING);
-2. o cenário de demonstração (seed.sql) existe, só se o banco estiver vazio;
+2. o cenário de demonstração (seed.sql + demo.sql, com ranking já calculado)
+   existe, só se o banco estiver vazio e ARIANO_SEED_DEMO não for false;
 3. existe um administrador, se ARIANO_ADMIN_EMAIL e ARIANO_ADMIN_PASSWORD
    estiverem definidos.
 
@@ -52,6 +53,22 @@ def _run_script(conn: psycopg.Connection, path: Path) -> None:
     log.info("aplicado: %s", path.name)
 
 
+def _rank_all_demands(conn: psycopg.Connection) -> None:
+    """Grava o ranking inicial de cada demanda, para o painel abrir com dados."""
+    from .services import matching_service  # import tardio: carrega o motor em C
+
+    ids = [r["id"] for r in conn.execute(
+        "SELECT DISTINCT demand_id AS id FROM tb_demand_tags ORDER BY demand_id"
+    ).fetchall()]
+    for demand_id in ids:
+        try:
+            # threshold mínimo: não grava quem tem score 0 (nenhuma obrigatória coberta)
+            matching_service.run_matching(conn, demand_id, threshold=0.001, persist=True)
+        except Exception as exc:  # demonstração não pode impedir a API de subir
+            log.warning("ranking inicial da demanda %s falhou: %s", demand_id, exc)
+    log.info("ranking inicial gravado para %d demanda(s)", len(ids))
+
+
 def ensure_admin(conn: psycopg.Connection, email: str, password: str, name: str) -> str:
     if len(password) < 12:
         raise ValueError("ARIANO_ADMIN_PASSWORD precisa ter pelo menos 12 caracteres")
@@ -78,6 +95,8 @@ def prepare_database(database_url: str) -> None:
             empty = conn.execute("SELECT NOT EXISTS (SELECT 1 FROM tb_actors) AS empty").fetchone()["empty"]
             if empty and _flag("ARIANO_SEED_DEMO", True):
                 _run_script(conn, DB_DIR / "seed.sql")
+                _run_script(conn, DB_DIR / "demo.sql")
+                _rank_all_demands(conn)
 
             email = os.environ.get("ARIANO_ADMIN_EMAIL", "").strip()
             password = os.environ.get("ARIANO_ADMIN_PASSWORD", "")

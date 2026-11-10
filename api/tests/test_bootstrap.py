@@ -14,6 +14,7 @@ def test_migrations_run_schema_first_then_numbered_files():
     assert names[1:] == sorted(names[1:])
     assert "003_auth.sql" in names and "004_scraper_catalog.sql" in names
     assert "seed.sql" not in names  # o seed só roda com o banco vazio
+    assert "demo.sql" not in names
 
 
 def test_not_found_handler_returns_404_instead_of_raising():

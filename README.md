@@ -1,5 +1,8 @@
 # ARIANO
 
+> **Novo no projeto?** Comece pelo [COMO_FUNCIONA.md](COMO_FUNCIONA.md), o passo a
+> passo do fluxo completo. Para publicar online, veja [docs/DEPLOY.md](docs/DEPLOY.md).
+
 Projeto em três módulos: um **pipeline de extração** que transforma editais em PDF
 num JSON estruturado, um **motor de matching em C** que pontua a compatibilidade
 entre atores e demandas, e uma **API** que integra os módulos ao PostgreSQL.
@@ -61,10 +64,16 @@ Sem dependências externas: basta um compilador C17 (`gcc` ou `clang`).
 ### API e banco
 
 Consulte o [guia da API](api/README.md). Na pasta `api`, execute
-`docker compose --profile full up -d --build --wait`, aplique a migração de
-autenticação e crie a conta administrativa conforme as instruções do guia.
-Abra `http://localhost:8000/app/` para usar o sistema; `GET /health` verifica
-banco e motor.
+`docker compose --profile full up -d --build --wait` e crie a conta
+administrativa conforme as instruções do guia. Ao subir, a API aplica sozinha o
+schema e as migrações (idempotentes). Abra `http://localhost:8000/app/` para usar
+o sistema; `GET /health` verifica banco e motor.
+
+### Online
+
+Render (container) + Neon (PostgreSQL), com `render.yaml` na raiz. O administrador
+é criado pelas variáveis `ARIANO_ADMIN_EMAIL`/`ARIANO_ADMIN_PASSWORD` e o banco
+vazio recebe uma demonstração fictícia. Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Estado atual
 
@@ -79,8 +88,9 @@ banco e motor.
 - **API e persistência:** código, DDL, seed, migração de usuários/sessões e Docker
   Compose estão em `api/`. O teste integrado da Sprint 03 verifica conexão,
   autenticação, autorização e operações reais de banco.
-- **Interface web local:** login, cadastro, consulta e manutenção de atores e
-  administração de papéis, servidos pela própria API em `/app/`.
+- **Interface web:** painel Visão geral, oportunidades (PDF → revisão → demanda →
+  ranking explicado), atores e administração de papéis, servidos pela própria API
+  em `/app/`.
 - **Ainda não existe:** scraping remoto (`pdf/downloader.py` está reservado
   para essa etapa). A autenticação local ainda precisa de reforços para produção.
 
