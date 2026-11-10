@@ -51,6 +51,16 @@ app = FastAPI(
 app.mount("/app", StaticFiles(directory=Path(__file__).resolve().parents[1] / "static", html=True), name="app")
 
 
+@app.middleware("http")
+async def _revalidate_frontend(request, call_next):
+    # Sem isso o navegador reaproveita app.js/styles.css antigos depois de um
+    # deploy. "no-cache" não impede o cache: só obriga a conferir o ETag.
+    response = await call_next(request)
+    if request.url.path.startswith("/app"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 def get_conn():
     with db.connection() as conn:
         yield conn

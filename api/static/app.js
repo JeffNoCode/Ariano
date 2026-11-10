@@ -132,7 +132,7 @@ function renderActors() {
     const actions = state.user.role === "VIEWER"
       ? `<button data-action="view" data-id="${actor.id}" type="button">Ver</button>`
       : `<button data-action="edit" data-id="${actor.id}" type="button">Editar</button><button class="danger" data-action="delete" data-id="${actor.id}" type="button">Excluir</button>`;
-    return `<tr><td><strong>${esc(actor.name)}</strong></td><td>${esc(actorTypes[actor.actor_type] || actor.actor_type)}</td><td>${esc(actor.city || "—")}${actor.state ? ` / ${esc(actor.state)}` : ""}</td><td>${esc(actorStatuses[actor.status] || actor.status)}</td><td>${actor.tag_count}</td><td>${actions}</td></tr>`;
+    return `<tr><td data-label="Nome"><strong>${esc(actor.name)}</strong></td><td data-label="Tipo">${esc(actorTypes[actor.actor_type] || actor.actor_type)}</td><td data-label="Cidade">${esc(actor.city || "—")}${actor.state ? ` / ${esc(actor.state)}` : ""}</td><td data-label="Status">${esc(actorStatuses[actor.status] || actor.status)}</td><td data-label="Competências">${actor.tag_count}</td><td data-label="Ações" class="row-actions">${actions}</td></tr>`;
   }).join("");
 }
 
@@ -225,7 +225,7 @@ async function loadUsers() {
   const users = await api("/users");
   $("user-rows").innerHTML = users.map((user) => {
     const options = ["ADMIN", "EDITOR", "VIEWER"].map((role) => `<option value="${role}" ${role === user.role ? "selected" : ""}>${userRoles[role]}</option>`).join("");
-    return `<tr><td>${esc(user.name)}</td><td>${esc(user.email)}</td><td><select data-user="${user.id}" aria-label="Perfil de ${esc(user.name)}">${options}</select></td><td>${user.is_active ? "Ativo" : "Inativo"}</td><td><button data-save-user="${user.id}" type="button">Salvar</button></td></tr>`;
+    return `<tr><td data-label="Nome"><strong>${esc(user.name)}</strong></td><td data-label="E-mail">${esc(user.email)}</td><td data-label="Perfil"><select data-user="${user.id}" aria-label="Perfil de ${esc(user.name)}">${options}</select></td><td data-label="Situação">${user.is_active ? "Ativo" : "Inativo"}</td><td data-label="Ação" class="row-actions"><button data-save-user="${user.id}" type="button">Salvar</button></td></tr>`;
   }).join("");
 }
 
@@ -288,7 +288,7 @@ function renderDemands() {
   const query = $("demand-search").value.trim().toLocaleLowerCase("pt-BR");
   const rows = state.demands.filter((item) => `${item.title} ${item.requester_name || ""}`.toLocaleLowerCase("pt-BR").includes(query));
   $("demand-empty").hidden = rows.length > 0;
-  $("demand-rows").innerHTML = rows.map((item) => `<tr><td><strong>${esc(item.title)}</strong><br><small>#${item.id}${item.document_id ? " · PDF vinculado" : ""}</small></td><td>${esc(item.requester_name || "Não informado")}</td><td>${statusChip(item.status)}</td><td>${item.tag_count}</td><td>${item.match_count}${item.best_score == null ? "" : `<br><small>melhor ${score3(item.best_score)}</small>`}</td><td><button type="button" data-demand="${item.id}">Abrir</button></td></tr>`).join("");
+  $("demand-rows").innerHTML = rows.map((item) => `<tr><td data-label="Demanda"><strong>${esc(item.title)}</strong><br><small>#${item.id}${item.document_id ? " · PDF vinculado" : ""}</small></td><td data-label="Solicitante">${esc(item.requester_name || "Não informado")}</td><td data-label="Status">${statusChip(item.status)}</td><td data-label="Competências">${item.tag_count}</td><td data-label="Resultados">${item.match_count}${item.best_score == null ? "" : ` <small>· melhor ${score3(item.best_score)}</small>`}</td><td data-label="Ação" class="row-actions"><button type="button" data-demand="${item.id}">Abrir</button></td></tr>`).join("");
 }
 
 function renderDemandTags(selectedCodes = []) {
@@ -462,7 +462,7 @@ async function runRanking() {
   button.disabled = true;
   showMessage("ranking-message", "");
   try {
-    await api(`/demands/${state.currentDemand.id}/match`, { method: "POST", body: JSON.stringify({ persist: true }) });
+    await api(`/demands/${state.currentDemand.id}/match`, { method: "POST", body: JSON.stringify({ persist: true, threshold: 0.001 }) });
     await loadRanking(state.currentDemand.id);
     await loadDemands();
     notify("Ranking calculado e salvo.");
