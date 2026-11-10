@@ -28,15 +28,39 @@
     <aside class="sidebar">
       <div class="sidebar-brand">ARIANO<small>Inteligência de oportunidades</small></div>
       <nav aria-label="Navegação principal">
+        <button class="nav-item active" id="nav-overview" type="button">Visão geral</button>
         <button class="nav-item" id="nav-demands" type="button">Oportunidades</button>
-        <button class="nav-item active" id="nav-actors" type="button">Atores</button>
+        <button class="nav-item" id="nav-actors" type="button">Atores</button>
         <button class="nav-item" id="nav-users" type="button" hidden>Usuários</button>
       </nav>
       <div class="sidebar-bottom"><span id="signed-user"></span><button id="logout" type="button">Sair</button></div>
     </aside>
     <div class="main-area">
-      <header class="topbar"><span id="page-label">Atores</span><span id="role-label" class="role-badge"></span></header>
+      <header class="topbar"><span id="page-label">Visão geral</span><span id="role-label" class="role-badge"></span></header>
       <main class="content">
+        <section id="overview-section">
+          <div class="section-heading"><div><h1 id="overview-greeting">Olá, equipe ARIANO</h1><p>Acompanhe editais, demandas e resultados de compatibilidade</p></div><button id="overview-new-demand" class="button primary" type="button">Nova demanda</button></div>
+          <div class="kpi-grid" id="overview-kpis" aria-live="polite"></div>
+          <div class="overview-grid">
+            <div class="panel">
+              <div class="panel-heading"><h2>Demandas recentes</h2><button id="overview-all-demands" class="link-button" type="button">Ver todas</button></div>
+              <div id="overview-demands" class="recent-list"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-heading"><h2>Ecossistema</h2></div>
+              <ul id="overview-ecosystem" class="ecosystem-list"></ul>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-heading"><h2>Ações rápidas</h2></div>
+            <div class="quick-actions">
+              <button class="quick-action" data-quick="demand" type="button"><strong>Enviar edital</strong><span>Ler um PDF e criar a demanda</span></button>
+              <button class="quick-action" data-quick="actor" type="button"><strong>Cadastrar ator</strong><span>Startup, profissional, organização ou órgão</span></button>
+              <button class="quick-action" data-quick="demands" type="button"><strong>Executar matching</strong><span>Abrir uma demanda e calcular o ranking</span></button>
+              <button class="quick-action" data-quick="actors" type="button"><strong>Consultar atores</strong><span>Perfis e competências cadastrados</span></button>
+            </div>
+          </div>
+        </section>
         <section id="demands-section" hidden>
           <div id="demand-list-view">
             <div class="section-heading"><div><h1>Oportunidades</h1><p>Demandas e resultados registrados</p></div><button id="new-demand" class="button primary" type="button">Nova demanda</button></div>
@@ -55,14 +79,16 @@
           </div>
           <div id="demand-detail-view" hidden>
             <div class="section-heading"><div><h1 id="detail-title">Demanda</h1><p id="detail-subtitle"></p></div><button id="back-from-detail" class="button secondary" type="button">Voltar</button></div>
+            <div id="demand-kpis" class="kpi-strip"></div>
             <dl id="demand-facts" class="facts"></dl>
             <div id="detail-document" class="review" hidden></div>
             <h2 class="subheading">Competências solicitadas</h2><div id="detail-tags" class="selected-tags"></div>
             <div class="section-heading ranking-heading"><div><h2>Ranking</h2><p>Compatibilidade calculada pelo motor e salva no banco</p></div><button id="run-ranking" class="button primary" type="button">Calcular ranking</button></div>
-            <p id="ranking-message" class="message" role="alert" hidden></p><div id="ranking-summary" class="muted"></div><div id="ranking-results" class="ranking-results"></div>
+            <p id="ranking-message" class="message" role="alert" hidden></p><div id="ranking-summary" class="muted"></div>
+            <div class="ranking-layout"><div id="ranking-results" class="ranking-results"></div><aside id="score-panel" class="score-panel" hidden aria-live="polite"></aside></div>
           </div>
         </section>
-        <section id="actors-section">
+        <section id="actors-section" hidden>
           <div class="section-heading"><div><h1>Atores</h1><p>Perfis e competências cadastrados</p></div><button id="new-actor" class="button primary" type="button" hidden>Novo ator</button></div>
           <div class="toolbar"><input id="actor-search" type="search" placeholder="Buscar ator" aria-label="Buscar ator"><button id="refresh-actors" class="button secondary" type="button">Atualizar</button></div>
           <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Cidade</th><th>Status</th><th>Competências</th><th>Ações</th></tr></thead><tbody id="actor-rows"></tbody></table></div>

@@ -319,7 +319,8 @@ def list_demands(conn: Connection, limit: int = 50, offset: int = 0) -> list[dic
         SELECT d.id, d.title, d.status, d.deadline, d.budget, d.currency,
                d.document_id, d.created_at, a.name AS requester_name,
                count(DISTINCT dt.tag_id) AS tag_count,
-               count(DISTINCT m.id) AS match_count
+               count(DISTINCT m.id) AS match_count,
+               max(m.score) AS best_score
           FROM tb_demands d
           LEFT JOIN tb_actors a ON a.id = d.requester_id
           LEFT JOIN tb_demand_tags dt ON dt.demand_id = d.id
@@ -330,6 +331,25 @@ def list_demands(conn: Connection, limit: int = 50, offset: int = 0) -> list[dic
         """,
         (limit, offset),
     ).fetchall()
+
+
+def overview_stats(conn: Connection) -> dict:
+    """Indicadores do painel Visão geral, numa única ida ao banco."""
+    return conn.execute(
+        """
+        SELECT (SELECT count(*) FROM tb_documents)                        AS documents,
+               (SELECT count(*) FROM tb_demands)                          AS demands,
+               (SELECT count(*) FROM tb_demands WHERE status = 'OPEN')    AS open_demands,
+               (SELECT count(*) FROM tb_actors)                           AS actors,
+               (SELECT count(*) FROM tb_actors WHERE status = 'ACTIVE')   AS active_actors,
+               (SELECT count(*) FROM tb_tags WHERE is_active)             AS tags,
+               (SELECT count(*) FROM tb_matches)                          AS matches,
+               (SELECT count(*) FROM tb_actors WHERE actor_type = 'SOLVER')            AS solvers,
+               (SELECT count(*) FROM tb_actors WHERE actor_type = 'STARTUP')           AS startups,
+               (SELECT count(*) FROM tb_actors WHERE actor_type = 'ORGANIZATION')      AS organizations,
+               (SELECT count(*) FROM tb_actors WHERE actor_type = 'GOVERNMENT_AGENCY') AS government_agencies
+        """
+    ).fetchone()
 
 
 def demand_tags_for_matching(conn: Connection, demand_id: int) -> list[tuple[int, str, float]]:

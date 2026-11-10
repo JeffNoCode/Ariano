@@ -102,6 +102,11 @@ def health(conn=Depends(get_conn)) -> dict:
     return {"status": "ok", "database": "ok", "engine": "ok"}
 
 
+@app.get("/stats", tags=["infra"], summary="Indicadores do painel Visão geral")
+def stats(user=Depends(current_user), conn=Depends(get_conn)) -> dict:
+    return repo.overview_stats(conn)
+
+
 @app.post("/auth/register", tags=["acesso"], status_code=201)
 def register(payload: RegisterIn, conn=Depends(get_conn)):
     try:

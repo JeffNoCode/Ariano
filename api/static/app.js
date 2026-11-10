@@ -68,18 +68,22 @@ function showApp() {
   $("new-demand").hidden = state.user.role === "VIEWER";
   $("run-ranking").hidden = state.user.role === "VIEWER";
   $("nav-users").hidden = state.user.role !== "ADMIN";
-  document.title = "ARIANO | Oportunidades";
-  switchView("demands");
+  $("overview-new-demand").hidden = state.user.role === "VIEWER";
+  document.querySelectorAll('[data-quick="demand"],[data-quick="actor"]').forEach((button) => { button.hidden = state.user.role === "VIEWER"; });
+  document.title = "ARIANO | Visão geral";
+  switchView("overview");
 }
 
+const views = { overview: "Visão geral", demands: "Oportunidades", actors: "Atores", users: "Usuários" };
+
 function switchView(view) {
-  $("demands-section").hidden = view !== "demands";
-  $("actors-section").hidden = view !== "actors";
-  $("users-section").hidden = view !== "users";
-  $("nav-demands").classList.toggle("active", view === "demands");
-  $("nav-actors").classList.toggle("active", view === "actors");
-  $("nav-users").classList.toggle("active", view === "users");
-  $("page-label").textContent = { demands: "Oportunidades", actors: "Atores", users: "Usuários" }[view];
+  Object.keys(views).forEach((name) => {
+    $(`${name}-section`).hidden = view !== name;
+    $(`nav-${name}`).classList.toggle("active", view === name);
+  });
+  $("page-label").textContent = views[view];
+  document.title = `ARIANO | ${views[view]}`;
+  if (view === "overview") loadOverview().catch((error) => notify(error.message));
   if (view === "demands") { showDemandPanel("list"); loadDemands().catch((error) => notify(error.message)); }
   if (view === "actors") loadActors().catch((error) => notify(error.message));
   if (view === "users") loadUsers().catch((error) => notify(error.message));
@@ -234,6 +238,43 @@ async function saveUser(event) {
   catch (error) { notify(error.message); }
 }
 
+const demandStatuses = { OPEN: "Aberta", EVALUATING: "Em análise", CLOSED: "Encerrada", CANCELLED: "Cancelada" };
+const classLabels = { EXACT: "Exata", RELATED: "Relacionada", PARTIAL: "Parcial", NONE: "Sem cobertura", MISSING: "Ausente" };
+const pct = (value) => `${Math.round(Number(value || 0) * 100)}%`;
+const score3 = (value) => Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const chip = (kind, text) => `<span class="chip chip-${esc(String(kind).toLowerCase())}">${esc(text)}</span>`;
+const statusChip = (status) => chip(`status-${status}`, demandStatuses[status] || status);
+
+function greeting() {
+  const hour = new Date().getHours();
+  return hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+}
+
+async function loadOverview() {
+  const [stats, demands] = await Promise.all([api("/stats"), api("/demands?limit=6")]);
+  $("overview-greeting").textContent = `${greeting()}, ${state.user.name.split(" ")[0]}`;
+  const kpis = [
+    ["Documentos processados", stats.documents, "Editais lidos pelo scraper"],
+    ["Demandas abertas", stats.open_demands, `${stats.demands} no total`],
+    ["Atores ativos", stats.active_actors, `${stats.actors} cadastrados`],
+    ["Matches gerados", stats.matches, `${stats.tags} competências no catálogo`],
+  ];
+  $("overview-kpis").innerHTML = kpis.map(([label, value, hint]) => `<div class="kpi"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(hint)}</small></div>`).join("");
+  $("overview-demands").innerHTML = demands.length ? demands.map((item) => `<button class="recent-item" type="button" data-demand="${item.id}"><span class="recent-title"><strong>${esc(item.title)}</strong><small>#${item.id} · ${esc(item.requester_name || "Solicitante não informado")}</small></span>${statusChip(item.status)}<span class="recent-score" title="Melhor score do ranking salvo">${item.best_score == null ? "—" : score3(item.best_score)}</span></button>`).join("") : '<p class="empty">Nenhuma demanda cadastrada ainda.</p>';
+  const ecosystem = [["Startups", stats.startups], ["Profissionais (solucionadores)", stats.solvers], ["Organizações", stats.organizations], ["Órgãos públicos", stats.government_agencies]];
+  const total = Math.max(1, stats.actors);
+  $("overview-ecosystem").innerHTML = ecosystem.map(([label, value]) => `<li><span>${esc(label)}</span><strong>${esc(value)}</strong><i style="--share:${(value / total) * 100}%"></i></li>`).join("");
+}
+
+function quickAction(event) {
+  const button = event.target.closest("button[data-quick]");
+  if (!button) return;
+  const target = button.dataset.quick;
+  if (target === "demand") { switchView("demands"); startDemand(); }
+  else if (target === "actor") { switchView("actors"); openActor(); }
+  else switchView(target);
+}
+
 function showDemandPanel(panel) {
   ["list", "create", "detail"].forEach((name) => { $(`demand-${name}-view`).hidden = panel !== name; });
 }
@@ -247,7 +288,7 @@ function renderDemands() {
   const query = $("demand-search").value.trim().toLocaleLowerCase("pt-BR");
   const rows = state.demands.filter((item) => `${item.title} ${item.requester_name || ""}`.toLocaleLowerCase("pt-BR").includes(query));
   $("demand-empty").hidden = rows.length > 0;
-  $("demand-rows").innerHTML = rows.map((item) => `<tr><td><strong>${esc(item.title)}</strong><br><small>#${item.id}${item.document_id ? " · PDF vinculado" : ""}</small></td><td>${esc(item.requester_name || "Não informado")}</td><td>${esc({ OPEN: "Aberta", EVALUATING: "Em análise", CLOSED: "Encerrada", CANCELLED: "Cancelada" }[item.status] || item.status)}</td><td>${item.tag_count}</td><td>${item.match_count}</td><td><button type="button" data-demand="${item.id}">Abrir</button></td></tr>`).join("");
+  $("demand-rows").innerHTML = rows.map((item) => `<tr><td><strong>${esc(item.title)}</strong><br><small>#${item.id}${item.document_id ? " · PDF vinculado" : ""}</small></td><td>${esc(item.requester_name || "Não informado")}</td><td>${statusChip(item.status)}</td><td>${item.tag_count}</td><td>${item.match_count}${item.best_score == null ? "" : `<br><small>melhor ${score3(item.best_score)}</small>`}</td><td><button type="button" data-demand="${item.id}">Abrir</button></td></tr>`).join("");
 }
 
 function renderDemandTags(selectedCodes = []) {
@@ -346,9 +387,9 @@ async function openDemand(id) {
     const demand = await api(`/demands/${id}`);
     state.currentDemand = demand;
     $("detail-title").textContent = demand.title;
-    $("detail-subtitle").textContent = `Demanda #${demand.id} · ${demand.status === "OPEN" ? "Aberta" : demand.status}`;
-    $("demand-facts").innerHTML = `<div><dt>Prazo</dt><dd>${esc(demand.deadline || "Não informado")}</dd></div><div><dt>Orçamento</dt><dd>${demand.budget == null ? "Não informado" : esc(Number(demand.budget).toLocaleString("pt-BR", { style: "currency", currency: demand.currency || "BRL" }))}</dd></div><div><dt>Descrição</dt><dd>${esc(demand.description || "Não informada")}</dd></div>`;
-    $("detail-tags").innerHTML = demand.tags.map((tag) => `<span>${esc(tag.code)} · ${tag.tag_type === "REQUIRED" ? "Obrigatória" : "Desejável"} · peso ${esc(tag.weight)}</span>`).join("");
+    $("detail-subtitle").textContent = `Demanda #${demand.id} · ${demandStatuses[demand.status] || demand.status}`;
+    $("demand-facts").innerHTML = `<div><dt>Prazo</dt><dd>${demand.deadline ? esc(new Date(`${demand.deadline}T12:00:00`).toLocaleDateString("pt-BR")) : "Não informado"}</dd></div><div><dt>Orçamento</dt><dd>${demand.budget == null ? "Não informado" : esc(Number(demand.budget).toLocaleString("pt-BR", { style: "currency", currency: demand.currency || "BRL" }))}</dd></div><div><dt>Descrição</dt><dd>${esc(demand.description || "Não informada")}</dd></div>`;
+    $("detail-tags").innerHTML = demand.tags.map((tag) => `<span>${esc(tagName(tag.tag_id))} · ${tag.tag_type === "REQUIRED" ? "Obrigatória" : "Desejável"} · peso ${esc(tag.weight)}</span>`).join("");
     if (demand.document_id) {
       const document = await api(`/documents/${demand.document_id}`);
       $("detail-document").innerHTML = `<strong>Documento vinculado</strong><p>${esc(document.title || "PDF processado")} · #${document.id}</p>`;
@@ -360,18 +401,59 @@ async function openDemand(id) {
   } catch (error) { notify(error.message); }
 }
 
+function tagName(id) {
+  return state.tags.find((tag) => tag.id === id)?.name || `Competência #${id}`;
+}
+
+function renderDemandKpis(demand, rows) {
+  const required = demand.tags.filter((tag) => tag.tag_type === "REQUIRED").length;
+  const items = [["Competências", demand.tags.length], ["Obrigatórias", required], ["Desejáveis", demand.tags.length - required], ["Atores no ranking", rows.length], ["Versão do algoritmo", rows[0]?.algorithm_version || "—"]];
+  $("demand-kpis").innerHTML = items.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join("");
+}
+
+function detailItem(item) {
+  const evidence = item.match === "EXACT" ? "o ator possui esta competência"
+    : item.match === "RELATED" ? `coberta por ${esc(tagName(item.actor_tag_id))} (${item.relation_type === "SYNONYM" ? "sinônimo" : "competência relacionada"}, peso ${esc(item.relation_weight)})`
+    : "nenhuma evidência no perfil do ator";
+  return `<li class="why-item"><div class="why-head"><strong>${esc(tagName(item.demand_tag_id))}</strong>${chip(item.match, classLabels[item.match] || item.match)}</div><div class="bar" role="img" aria-label="Cobertura ${pct(item.coverage)}"><i style="width:${pct(item.coverage)}"></i></div><small>Cobertura ${pct(item.coverage)} · ${evidence}</small></li>`;
+}
+
+function renderScorePanel(row) {
+  const panel = $("score-panel");
+  if (!row) { panel.hidden = true; return; }
+  const sd = row.score_details || {};
+  const details = sd.details || [];
+  const required = details.filter((item) => item.tag_type === "REQUIRED");
+  const desirable = details.filter((item) => item.tag_type === "DESIRABLE");
+  panel.innerHTML = `<p class="eyebrow">Por que este score?</p><h3>${esc(row.actor_name)}</h3>
+    <div class="why-score"><strong>${score3(row.score)}</strong>${chip(row.match_type, classLabels[row.match_type] || row.match_type)}</div>
+    <dl class="why-parts"><div><dt>Obrigatórias</dt><dd>${pct(sd.required_score)}</dd></div><div><dt>Desejáveis</dt><dd>${desirable.length ? pct(sd.desirable_score) : "—"}</dd></div><div><dt>Faltando</dt><dd>${esc(row.required_missing_count || 0)}</dd></div></dl>
+    ${required.length ? `<h4>Obrigatórias</h4><ul class="why-list">${required.map(detailItem).join("")}</ul>` : ""}
+    ${desirable.length ? `<h4>Desejáveis</h4><ul class="why-list">${desirable.map(detailItem).join("")}</ul>` : ""}
+    <p class="muted why-note">As obrigatórias formam a base do score; as desejáveis ajustam até 20% dela. O score só é comparável entre atores desta mesma demanda.</p>`;
+  panel.hidden = false;
+}
+
+function selectRankingRow(index) {
+  state.rankingIndex = index;
+  $("ranking-results").querySelectorAll(".ranking-row").forEach((element, i) => {
+    element.classList.toggle("selected", i === index);
+    element.setAttribute("aria-pressed", String(i === index));
+  });
+  renderScorePanel(state.ranking[index]);
+}
+
 function renderRanking(rows) {
-  $("ranking-summary").textContent = rows.length ? `${rows.length} resultado(s) salvos. O percentual indica compatibilidade nesta demanda.` : "Ainda não há ranking salvo para esta demanda.";
-  $("ranking-results").innerHTML = rows.map((row, index) => {
-    const details = row.score_details?.details || [];
-    const labels = { EXACT: "Exata", RELATED: "Relacionada", PARTIAL: "Parcial", NONE: "Sem cobertura" };
-    return `<article class="ranking-row"><div class="ranking-main"><span class="rank-number">${index + 1}</span><div><strong>${esc(row.actor_name)}</strong><small>${esc(labels[row.match_type] || row.match_type)} · ${esc(row.required_missing_count || 0)} obrigatória(s) não atendida(s)</small></div><strong class="rank-score">${Math.round(Number(row.score) * 100)}%</strong></div><details><summary>Entenda o resultado</summary><ul>${details.map((item) => `<li>${esc(state.tags.find((tag) => tag.id === item.demand_tag_id)?.name || `Tag #${item.demand_tag_id}`)}: ${esc(labels[item.match] || item.match)} · cobertura ${Math.round(Number(item.coverage) * 100)}%</li>`).join("")}</ul></details></article>`;
-  }).join("");
+  state.ranking = rows;
+  $("ranking-summary").textContent = rows.length ? `${rows.length} resultado(s) salvos. Selecione um ator para ver a explicação do score.` : "Ainda não há ranking salvo para esta demanda.";
+  $("ranking-results").innerHTML = rows.map((row, index) => `<button type="button" class="ranking-row" data-rank="${index}" aria-pressed="false"><span class="rank-number">${index + 1}</span><span class="ranking-name"><strong>${esc(row.actor_name)}</strong><small>${esc(row.required_missing_count || 0)} obrigatória(s) não atendida(s)</small></span>${chip(row.match_type, classLabels[row.match_type] || row.match_type)}<strong class="rank-score">${score3(row.score)}</strong></button>`).join("");
+  if (rows.length) selectRankingRow(0); else renderScorePanel(null);
 }
 
 async function loadRanking(id) {
   const rows = await api(`/demands/${id}/matches?limit=500`);
   renderRanking(rows);
+  if (state.currentDemand?.id === id) renderDemandKpis(state.currentDemand, rows);
 }
 
 async function runRanking() {
@@ -392,6 +474,12 @@ async function initialize() {
   $("auth-form").addEventListener("submit", submitAuth);
   $("auth-mode").addEventListener("click", () => setAuthMode(state.mode === "login" ? "register" : "login"));
   $("logout").addEventListener("click", async () => { try { await api("/auth/logout", { method: "POST" }); } catch {} state.token = null; state.user = null; sessionStorage.removeItem("ariano_token"); showAuth(); });
+  $("nav-overview").addEventListener("click", () => switchView("overview"));
+  $("overview-new-demand").addEventListener("click", () => { switchView("demands"); startDemand(); });
+  $("overview-all-demands").addEventListener("click", () => switchView("demands"));
+  $("overview-demands").addEventListener("click", (event) => { const button = event.target.closest("button[data-demand]"); if (button) { switchView("demands"); openDemand(Number(button.dataset.demand)); } });
+  document.querySelector(".quick-actions").addEventListener("click", quickAction);
+  $("ranking-results").addEventListener("click", (event) => { const row = event.target.closest("button[data-rank]"); if (row) selectRankingRow(Number(row.dataset.rank)); });
   $("nav-demands").addEventListener("click", () => switchView("demands"));
   $("nav-actors").addEventListener("click", () => switchView("actors"));
   $("nav-users").addEventListener("click", () => switchView("users"));
