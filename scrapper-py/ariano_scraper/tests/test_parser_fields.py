@@ -70,7 +70,8 @@ def test_known_competencies_are_recognized():
     assert "PYTHON" in codes
     assert "WHATSAPP" in codes
     assert "AUTOMATION" in codes
-    assert "ML" in codes
+    # Mesmo código do catálogo tb_tags, para o PDF pré-selecionar a competência.
+    assert "MACHINE_LEARNING" in codes
 
 
 def test_competency_carries_source_page_and_matched_text():

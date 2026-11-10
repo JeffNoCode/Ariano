@@ -5,7 +5,7 @@
     "aliases": ["ia", "inteligência artificial", "inteligencia artificial", "artificial intelligence", "ai"]
   },
   {
-    "code": "ML",
+    "code": "MACHINE_LEARNING",
     "name": "Machine Learning",
     "aliases": ["machine learning", "aprendizado de máquina", "aprendizado de maquina", "ml"]
   },
@@ -58,5 +58,15 @@
     "code": "BLOCKCHAIN",
     "name": "Blockchain",
     "aliases": ["blockchain"]
+  },
+  {
+    "code": "NLP",
+    "name": "Natural Language Processing",
+    "aliases": ["nlp", "processamento de linguagem natural", "natural language processing", "pln"]
+  },
+  {
+    "code": "CLOUD",
+    "name": "Cloud Computing",
+    "aliases": ["computação em nuvem", "computacao em nuvem", "cloud computing", "cloud"]
   }
 ]

@@ -6,10 +6,11 @@ from pathlib import Path
 
 import psycopg
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
-from . import auth_repository as auth_repo, db, repository as repo, security
+from . import auth_repository as auth_repo, bootstrap, db, repository as repo, security
 from .engine import bindings as engine
 from .models import ActorIn, DemandIn, LoginIn, MatchOptions, RegisterIn, RelationIn, RoleUpdateIn, TagIn, TagOut
 from .services import document_service, matching_service
@@ -34,6 +35,7 @@ Pontos que valem ler antes de usar:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    bootstrap.prepare_database(db.DATABASE_URL)
     db.open_pool()
     engine.get_library()
     yield
@@ -84,7 +86,14 @@ admin_required = require_role("ADMIN")
 
 @app.exception_handler(repo.NotFound)
 async def _not_found(request, exc: repo.NotFound):
-    raise HTTPException(status_code=404, detail=str(exc))
+    # Um exception handler precisa DEVOLVER a resposta: levantar
+    # HTTPException aqui dentro não é tratado e vira erro 500.
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/app/")
 
 @app.get("/health", tags=["infra"], summary="Banco e motor estão de pé?")
 def health(conn=Depends(get_conn)) -> dict:

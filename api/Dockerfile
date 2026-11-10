@@ -10,11 +10,13 @@ COPY api/requirements.txt /tmp/api-requirements.txt
 COPY scrapper-py/ariano_scraper/requirements.txt /tmp/scraper-requirements.txt
 RUN pip install --no-cache-dir -r /tmp/api-requirements.txt -r /tmp/scraper-requirements.txt
 COPY api/ariano_api/ /app/api/ariano_api/
+COPY api/db/ /app/api/db/
 COPY api/scripts/ /app/api/scripts/
 COPY api/static/ /app/api/static/
 COPY scrapper-py/ariano_scraper/ /app/scrapper-py/ariano_scraper/
 COPY --from=engine /src/build/libariano.so /app/Matching-ariano-c/matching_engine/build/libariano.so
+ENV ARIANO_ENGINE_LIB=/app/Matching-ariano-c/matching_engine/build/libariano.so
 WORKDIR /app/api
 EXPOSE 8000
-CMD ["uvicorn", "ariano_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
+# Render, Railway e afins informam a porta em $PORT; localmente fica 8000.
+CMD ["sh", "-c", "exec uvicorn ariano_api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

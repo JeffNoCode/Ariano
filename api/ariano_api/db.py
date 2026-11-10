@@ -24,6 +24,10 @@ def open_pool() -> ConnectionPool:
             min_size=POOL_MIN,
             max_size=POOL_MAX,
             kwargs={"row_factory": dict_row},
+            # Bancos gerenciados (Neon) derrubam conexões ociosas: testa cada
+            # conexão antes de entregá-la e descarta as que ficaram paradas.
+            check=ConnectionPool.check_connection,
+            max_idle=float(os.environ.get("ARIANO_POOL_MAX_IDLE", "120")),
             open=True,
         )
     return _pool

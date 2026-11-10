@@ -1,0 +1,24 @@
+# Blueprint do Render: API (com o motor em C e o scraper) num container Docker.
+# O banco fica fora do Render (Neon): cole a connection string em DATABASE_URL.
+# Guia passo a passo: docs/DEPLOY.md
+services:
+  - type: web
+    name: ariano
+    runtime: docker
+    plan: free
+    region: virginia            # mesma região do banco no Neon (aws-us-east-1)
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL       # postgresql://...neon.tech/neondb?sslmode=require
+        sync: false
+      - key: ARIANO_ADMIN_EMAIL
+        sync: false
+      - key: ARIANO_ADMIN_PASSWORD   # mínimo de 12 caracteres
+        sync: false
+      - key: ARIANO_POOL_MAX
+        value: "5"
+      - key: ARIANO_SEED_DEMO
+        value: "true"
