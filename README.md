@@ -23,7 +23,7 @@ PDF do edital ──▶ API ──▶ scrapper-py ──▶ JSON estruturado ─
 | Módulo | Linguagem | O que faz | Documentação |
 |---|---|---|---|
 | [`scrapper-py/ariano_scraper`](scrapper-py/ariano_scraper) | Python 3.10+ | Valida o PDF, extrai e normaliza o texto, detecta seções, aplica regex (datas, prazos, valores, organização) e reconhece competências conhecidas. Valida o resultado com Pydantic e grava o JSON. | [README do scraper](scrapper-py/ariano_scraper/README.md) |
-| [`Matching-ariano-c/matching_engine`](Matching-ariano-c/matching_engine) | C17 (só libc/libm) | Calcula o score de 1 ator × 1 demanda (`matcher_run`) e roda lotes de 1 demanda × N atores (`batch_match`), com threshold, ordenação determinística e top-k. | [README do motor](Matching-ariano-c/matching_engine/README.md) |
+| [`Matching-ariano-c/matching_engine`](Matching-ariano-c/matching_engine) | C17 (só libc/libm) | Calcula o score de 1 ator × 1 demanda (`matcher_run`) e roda lotes de 1 demanda × N atores (`batch_match`), com threshold, ordenação determinística e top-k. A versão `batch_match_parallel` faz o mesmo lote dividido entre N threads (pthreads), com resultado idêntico. | [README do motor](Matching-ariano-c/matching_engine/README.md) |
 | [`api`](api) | Python 3.10+, FastAPI, PostgreSQL 16 | Integra banco, scraper e motor C; oferece cadastro, login, perfis, CRUD de atores e interface web local. | [README da API](api/README.md) |
 
 Cada README de módulo detalha seus contratos e limitações. A documentação da
@@ -56,7 +56,8 @@ que não é PDF — não é preciso nenhum documento externo para rodar os teste
 cd Matching-ariano-c/matching_engine
 
 make            # compila o demo -> build/ariano_demo
-make test       # testes com AddressSanitizer + UBSan + injeção de falha de alocação
+make test       # suíte original + paralelo (ASan/UBSan, falha de alocação) + ThreadSanitizer
+make bench      # tempo com 1, 2, 4 e 8 threads (200 mil atores sintéticos)
 make valgrind   # opcional, se valgrind estiver instalado
 make shared     # libariano.so; no Windows, mingw32-make shared gera .dll
 ```
@@ -77,11 +78,43 @@ Render (container) + Neon (PostgreSQL), com `render.yaml` na raiz. O administrad
 é criado pelas variáveis `ARIANO_ADMIN_EMAIL`/`ARIANO_ADMIN_PASSWORD` e o banco
 vazio recebe uma demonstração fictícia. Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 
+## Paralelismo
+
+O ARIANO executa trabalho em paralelo em dois pontos, e a página **Desempenho**
+do site compara, ao vivo e com barras de progresso, o tempo sequencial com o paralelo.
+
+| Onde | Tipo | Como |
+|---|---|---|
+| Motor de matching (C) | **Threads** (memória compartilhada) | `batch_match_parallel()` divide os atores em blocos, um por pthread; cada thread avalia, filtra, ordena e corta no top-k a sua parte, e a thread principal intercala as listas |
+| Leitura de editais | **Processos** (memória separada) | Cada PDF é lido por um processo próprio do scraper; vários editais ao mesmo tempo (o GIL do Python impediria ganho com threads) |
+
+**Mesmo resultado, sempre:** a ordem do ranking é total e determinística, então o
+paralelo devolve exatamente o mesmo ranking do sequencial. Isso é verificado por
+2.728 comparações em `tests/test_parallel.c` (ASan/UBSan), pelo ThreadSanitizer
+(nenhuma condição de corrida) e pelo checksum mostrado na página Desempenho.
+
+**Lei de Amdahl na prática:** a primeira versão ordenava o resultado inteiro numa
+thread só e ganhava apenas 1,4× com 4 threads. Levar a ordenação para dentro de
+cada thread reduziu a parte sequencial à intercalação e o ganho subiu para ~3×.
+
+| Medido em 26/11/2026 (Docker Desktop, 8 CPUs) | Sequencial | Paralelo | Ganho |
+|---|---|---|---|
+| Motor, 200 mil atores × 9 rodadas, 8 threads | 2,27 s | 0,60 s | **3,8×** |
+| 4 editais, 2 ao mesmo tempo | 6,31 s | 3,91 s | **1,6×** |
+
+> No plano gratuito do Render o servidor tem só uma fração de 1 CPU, então o ganho
+> online é pequeno; por isso a página também mostra a medição de referência acima.
+
+Implementação, endpoints `/bench/*` e como medir de novo:
+[docs/PARALELISMO.md](docs/PARALELISMO.md).
+
 ## Estado atual
 
 - **Motor de matching:** funcional. A suíte cobre 57 casos / ~4.800 verificações,
   incluindo ordenação determinística, limites de ponto flutuante, invariância das
   entradas e falha de alocação em todos os pontos, tudo sob ASan/UBSan/LSan.
+  A versão paralela tem mais 2.728 verificações de equivalência e roda limpa
+  sob ThreadSanitizer.
 - **Scraper:** funcional para editais com camada de texto nativa. **OCR ainda não
   está implementado** — PDFs escaneados são identificados e não travam o pipeline,
   mas saem com texto vazio ou parcial e um aviso em `extraction_warnings`.
@@ -91,8 +124,8 @@ vazio recebe uma demonstração fictícia. Passo a passo em [docs/DEPLOY.md](doc
   Compose estão em `api/`. O teste integrado da Sprint 03 verifica conexão,
   autenticação, autorização e operações reais de banco.
 - **Interface web:** painel Visão geral, oportunidades (PDF → revisão → demanda →
-  ranking explicado), atores e administração de papéis, servidos pela própria API
-  em `/app/`.
+  ranking explicado), atores, administração de papéis e Desempenho (sequencial ×
+  paralelo), servidos pela própria API em `/app/`.
 - **Ainda não existe:** scraping remoto (`pdf/downloader.py` está reservado
   para essa etapa). A autenticação local ainda precisa de reforços para produção.
 
