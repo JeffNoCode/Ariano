@@ -120,12 +120,13 @@ Implementação, endpoints `/bench/*` e como medir de novo:
   mas saem com texto vazio ou parcial e um aviso em `extraction_warnings`.
 - **Não usa nenhum serviço pago nem API de LLM.** Toda a extração é regex e
   detecção de seções; todo o matching é aritmética local.
-- **API e persistência:** código, DDL, seed, migração de usuários/sessões e Docker
-  Compose estão em `api/`. O teste integrado da Sprint 03 verifica conexão,
-  autenticação, autorização e operações reais de banco.
-- **Interface web:** painel Visão geral, oportunidades (PDF → revisão → demanda →
-  ranking explicado), atores, administração de papéis e Desempenho (sequencial ×
-  paralelo), servidos pela própria API em `/app/`.
+- **API e persistência:** integra autenticação, operações de atores, ingestão de
+  editais, ciclo de vida de demandas e ranking versionado. PostgreSQL guarda
+  também o histórico de operações.
+- **Interface web:** Visão geral, Oportunidades com busca, filtros e CSV, Atores,
+  Histórico, Desempenho e gestão de usuários, servidos pela API em `/app/`.
+- **Verificação:** o [guia da API](api/README.md#verificação-integrada) descreve
+  os testes de API, ABI e navegação, incluindo os roteiros da Sprint 09.
 - **Ainda não existe:** scraping remoto (`pdf/downloader.py` está reservado
   para essa etapa). A autenticação local ainda precisa de reforços para produção.
 

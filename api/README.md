@@ -251,3 +251,34 @@ O desempate usa score, quantidade de obrigatórias ausentes e ID do ator.
 O cadastro público cria contas Leitor. Editores podem atualizar dados e
 consultar o histórico. A gestão de papéis é exclusiva de administradores,
 registra alterações no histórico e protege a última conta administradora ativa.
+
+
+## Verificação integrada
+
+Use um banco de teste. Os roteiros criam registros no ambiente informado.
+Suba a API e configure `ARIANO_TEST_URL` e `ARIANO_TEST_ADMIN_EMAIL`. Os
+roteiros Python solicitam a senha quando `ARIANO_TEST_ADMIN_PASSWORD` não
+está definida. Na pasta `api/`:
+
+```bash
+python -m pytest -q tests
+python -m scripts.smoke_sprint09
+```
+
+A suíte de ABI requer GCC ou outro compilador C compatível e os cabeçalhos
+do motor no checkout. O teste HTTP verifica gravação do ranking, encerramento,
+bloqueio de recálculo, listagem filtrada, CSV equivalente e histórico.
+
+Para a regressão de navegação, instale Playwright como dependência apenas
+do ambiente de teste. Na raiz do repositório:
+
+```bash
+npm install --prefix api/tests/browser --no-save --no-package-lock playwright
+node api/tests/browser/node_modules/playwright/cli.js install chromium
+node api/tests/browser/sprint09.cjs
+```
+
+Defina as mesmas variáveis de API, incluindo `ARIANO_TEST_ADMIN_PASSWORD`.
+O teste valida login, mensagem do formulário, abertura de demandas com
+respostas fora de ordem, retorno à lista, ranking salvo, navegação em 420 px,
+histórico e logout. Defina `ARIANO_TEST_EVIDENCE_DIR` para gravar as capturas.

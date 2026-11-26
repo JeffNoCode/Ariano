@@ -53,17 +53,17 @@ Cada ator tem uma lista de competências, cada uma com uma **força de 0 a 1**
                           ▼            ▼           ▼
                 ┌──────────────┐ ┌───────────┐ ┌──────────────┐
                 │ Scraper      │ │ Motor C17 │ │ PostgreSQL   │
-                │ PDF → JSON   │ │ libariano │ │ 14 tabelas   │
+                │ PDF → JSON   │ │ libariano │ │ 15 tabelas   │
                 └──────────────┘ └───────────┘ └──────────────┘
 ```
 
 | Peça | Tecnologia | Papel |
 |---|---|---|
-| Interface web | HTML + JS puro, servida pela API em `/app/` | Painel, oportunidades, atores, usuários |
+| Interface web | HTML + JS puro, servida pela API em `/app/` | Painel, oportunidades, atores, histórico, desempenho e usuários |
 | API | Python, FastAPI, Pydantic | Autenticação, validação, orquestração |
 | Scraper | Python, pdfplumber | Lê o edital em PDF e extrai título, prazo, orçamento, competências |
 | Motor de matching | C17 puro (sem dependências) | Calcula score, classe e ranking em lote |
-| Banco | PostgreSQL 16 | Atores, competências, documentos, demandas, rankings, contas |
+| Banco | PostgreSQL 16 | Atores, competências, documentos, demandas, rankings, contas e operações |
 
 **Por que o motor é em C?** É a parte mais crítica e mais testada (57 casos,
 ~4.800 verificações sob AddressSanitizer). Ele não acessa banco, rede ou arquivo:
@@ -83,6 +83,8 @@ horas. Perfis:
 |---|:-:|:-:|:-:|
 | Ver painel, demandas, rankings, atores | ✅ | ✅ | ✅ |
 | Criar/editar atores e demandas, calcular ranking, enviar PDF | — | ✅ | ✅ |
+| Exportar CSV de oportunidades | ✅ | ✅ | ✅ |
+| Consultar histórico de operações | — | ✅ | ✅ |
 | Gerenciar perfis de usuários | — | — | ✅ |
 
 Quem se cadastra pela tela entra como **Leitor**; um administrador promove.
@@ -96,7 +98,7 @@ gerados, demandas recentes (com o melhor score) e a distribuição do ecossistem
 2. O scraper valida o arquivo (até 10 MB, precisa ser PDF com texto), extrai o
    texto e procura título, prazos, orçamento e competências conhecidas.
 3. O JSON completo é salvo em `tb_documents`. Um hash SHA-256 impede processar o
-   mesmo PDF duas vezes.
+   mesmo PDF duas vezes. A API procura o hash antes de iniciar o subprocesso.
 4. O formulário é preenchido com o que foi encontrado, e as competências
    reconhecidas já vêm marcadas.
 
@@ -116,6 +118,17 @@ monta as estruturas e chama `batch_match` no motor em C. O resultado é gravado 
 Cada ator no ranking mostra score, classe (**Exata**, **Relacionada**, **Parcial**)
 e, ao clicar, o quadro **"Por que este score?"** com a cobertura de cada
 competência e de onde veio a evidência.
+
+### Passo 7 — Acompanhar e exportar
+
+Na lista de Oportunidades, combine texto, situação e período de criação. A
+listagem e o CSV aplicam os mesmos critérios na API. O detalhe permite editar
+ou encerrar uma demanda com perfil Editor ou Administrador. Os resultados
+salvos continuam consultáveis no encerramento. Reabra a demanda para calcular
+de novo. A mudança dos critérios invalida resultados anteriores.
+
+A tela Histórico exibe ações registradas a partir da migração 005, incluindo
+operações de atores, documentos, demandas, rankings e alterações de papel.
 
 ### Extra — Desempenho (paralelismo)
 A página **Desempenho** compara, ao vivo, o motor com 1 thread e com várias
@@ -164,6 +177,7 @@ desfeitos sempre da mesma forma. **Scores só se comparam dentro da mesma demand
 | `tb_demands`, `tb_demand_tags` | Demandas e competências pedidas, com tipo e peso |
 | `tb_matches` | Rankings: score, classe, explicação (JSONB) e versão do algoritmo |
 | `tb_users`, `tb_sessions` | Contas e sessões de login |
+| `tb_operation_log` | Usuário, ação, entidade, ID do registro e horário de cada evento |
 
 Quando a API sobe, ela mesma aplica o schema e as migrações (tudo idempotente).
 Se o banco estiver vazio, carrega a **demonstração**: atores e demandas fictícios
