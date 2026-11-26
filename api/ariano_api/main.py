@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from subprocess import TimeoutExpired
 
 import psycopg
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
@@ -455,18 +457,24 @@ def ingest_document(file: UploadFile = File(...), user=Depends(editor_required),
         raise HTTPException(422, "PDF_VALIDATION: o PDF deve ter no máximo 10 MB")
     if not content.startswith(b"%PDF-"):
         raise HTTPException(422, "PDF_VALIDATION: selecione um PDF válido")
-    try:
-        payload = document_service.run_scraper(content, file.filename or "upload.pdf")
-    except document_service.ScraperError as exc:
-        if exc.returncode == 1:
-            raise HTTPException(422, "PDF_VALIDATION: não foi possível ler o PDF. Confira se o arquivo está íntegro e contém texto.")
-        raise HTTPException(500, "não foi possível processar o PDF neste momento")
-    except TimeoutError:
-        raise HTTPException(504, "o scraper excedeu o tempo limite")
+    digest = "sha256:" + hashlib.sha256(content).hexdigest()
+    row = repo.find_document_for_ingest(conn, digest)
+    if row is None:
+        try:
+            payload = document_service.run_scraper(content, file.filename or "upload.pdf")
+        except document_service.ScraperError as exc:
+            if exc.returncode == 1:
+                raise HTTPException(422, "PDF_VALIDATION: não foi possível ler o PDF. Confira se o arquivo está íntegro e contém texto.")
+            raise HTTPException(500, "não foi possível processar o PDF neste momento")
+        except TimeoutExpired:
+            raise HTTPException(504, "o scraper excedeu o tempo limite")
+        row = repo.insert_document(conn, payload)
+        if not row["already_existed"]:
+            complete_operation(conn, user, "PROCESS", "DOCUMENT", row["id"])
+    else:
+        payload = row["payload"]
+        row["already_existed"] = True
 
-    row = repo.insert_document(conn, payload)
-    if not row["already_existed"]:
-        complete_operation(conn, user, "PROCESS", "DOCUMENT", row["id"])
     return {
         "id": row["id"],
         "document_hash": row["document_hash"],

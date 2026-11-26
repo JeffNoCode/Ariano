@@ -412,6 +412,15 @@ def demand_tags_for_matching(conn: Connection, demand_id: int) -> list[tuple[int
     ).fetchall()
     return [(r["tag_id"], r["tag_type"], r["weight"]) for r in rows]
 
+def find_document_for_ingest(conn: Connection, document_hash: str) -> dict | None:
+    # A espera ocorre antes da leitura do PDF e dura até o commit ou rollback do envio.
+    conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (document_hash,))
+    return conn.execute(
+        "SELECT id, document_hash, title, payload FROM tb_documents WHERE document_hash = %s",
+        (document_hash,),
+    ).fetchone()
+
+
 def insert_document(conn: Connection, payload: dict) -> dict:
 
     meta = payload.get("processing_metadata", {})
