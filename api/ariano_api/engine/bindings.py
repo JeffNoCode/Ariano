@@ -216,6 +216,15 @@ def get_library() -> ctypes.CDLL:
     return _LIB
 
 
+def algorithm_version() -> str:
+    version = getattr(get_library(), "matcher_algorithm_version", None)
+    if version is None:
+        return "mvp-1"  # Bibliotecas anteriores à Sprint 08.
+    version.restype = c_char_p
+    version.argtypes = []
+    return version().decode("ascii")
+
+
 # ------------------------------------------------------- entrada / saída
 
 

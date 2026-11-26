@@ -31,6 +31,8 @@ typedef struct {
     double desirable_share;
 } MatchConfig;
 
+const char *matcher_algorithm_version(void);
+
 MatchConfig matcher_default_config(void); /* desirable_share = 0.20 */
 
 /* Validadores independentes (o batch os usa uma vez, antes de avaliar N atores). */

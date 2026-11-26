@@ -163,12 +163,14 @@ def bench_job(job_id: str, user=Depends(current_user)) -> dict:
 @app.post("/auth/register", tags=["acesso"], status_code=201)
 def register(payload: RegisterIn, conn=Depends(get_conn)):
     try:
-        return auth_repo.create_user(
+        user = auth_repo.create_user(
             conn, payload.name.strip(), payload.email.strip().lower(),
             security.hash_password(payload.password),
         )
     except psycopg.errors.UniqueViolation:
         raise HTTPException(409, "email já cadastrado")
+    conn.commit()
+    return user
 
 
 @app.post("/auth/login", tags=["acesso"])
@@ -195,6 +197,7 @@ def logout(
     conn=Depends(get_conn),
 ):
     auth_repo.revoke_session(conn, security.token_hash(credentials.credentials))
+    conn.commit()
     return {"status": "ok"}
 
 
@@ -207,12 +210,23 @@ def users(user: dict = Depends(admin_required), conn=Depends(get_conn)):
 def change_role(
     user_id: int, payload: RoleUpdateIn, user: dict = Depends(admin_required), conn=Depends(get_conn),
 ):
-    target = conn.execute("SELECT role FROM tb_users WHERE id = %s FOR UPDATE", (user_id,)).fetchone()
+    # Serializa mudanças de papel antes de proteger a última conta administradora.
+    conn.execute("SELECT pg_advisory_xact_lock(4242028)")
+    operator = conn.execute("SELECT role, is_active FROM tb_users WHERE id = %s", (user["id"],)).fetchone()
+    if operator is None or not operator["is_active"] or operator["role"] != "ADMIN":
+        raise HTTPException(403, "perfil sem permissão para esta operação")
+    target = conn.execute(
+        "SELECT id, name, email, role, is_active, created_at FROM tb_users WHERE id = %s", (user_id,),
+    ).fetchone()
     if target is None:
         raise HTTPException(404, "usuário não encontrado")
-    if target["role"] == "ADMIN" and payload.role != "ADMIN" and auth_repo.admin_count(conn) <= 1:
+    if target["role"] == "ADMIN" and target["is_active"] and payload.role != "ADMIN" and auth_repo.admin_count(conn) <= 1:
         raise HTTPException(409, "não é possível remover o último administrador")
-    return auth_repo.set_role(conn, user_id, payload.role)
+    if payload.role == target["role"]:
+        return target
+    updated = auth_repo.set_role(conn, user_id, payload.role)
+    complete_operation(conn, user, "CHANGE_ROLE", "USER", user_id)
+    return updated
 
 
 @app.post("/tags", tags=["tags"], status_code=201, response_model=TagOut)
@@ -357,6 +371,22 @@ def get_demand(demand_id: int, user=Depends(current_user), conn=Depends(get_conn
     return repo.get_demand(conn, demand_id)
 
 
+@app.put("/demands/{demand_id}", tags=["demandas"])
+def update_demand(demand_id: int, payload: DemandIn, user=Depends(editor_required), conn=Depends(get_conn)):
+    try:
+        repo.update_demand(
+            conn, demand_id, requester_id=payload.requester_id, title=payload.title,
+            description=payload.description, status=payload.status, deadline=payload.deadline,
+            budget=payload.budget, currency=payload.currency, document_id=payload.document_id,
+            tags=[(tag.tag_id, tag.type, tag.weight) for tag in payload.tags],
+        )
+    except psycopg.errors.ForeignKeyViolation:
+        raise HTTPException(422, "requester_id, document_id ou alguma tag informada não existe")
+    demand = repo.get_demand(conn, demand_id)
+    complete_operation(conn, user, "UPDATE", "DEMAND", demand_id)
+    return demand
+
+
 @app.post(
     "/demands/{demand_id}/match",
     tags=["matching"],
@@ -374,6 +404,8 @@ def run_match(demand_id: int, options: MatchOptions = MatchOptions(), user=Depen
             evaluate_all_actors=options.evaluate_all_actors,
             persist=options.persist,
         )
+    except matching_service.InactiveDemand as exc:
+        raise HTTPException(409, str(exc))
     except matching_service.DemandHasNoTags as exc:
         raise HTTPException(422, str(exc))
     except engine.MatcherFailure as exc:
@@ -394,10 +426,12 @@ def run_match(demand_id: int, options: MatchOptions = MatchOptions(), user=Depen
 
 @app.get("/demands/{demand_id}/matches", tags=["matching"], summary="Ranking já gravado")
 def stored_matches(
-    demand_id: int, limit: int = Query(50, ge=1, le=500), user=Depends(current_user), conn=Depends(get_conn)
+    demand_id: int, limit: int = Query(50, ge=1, le=500),
+    algorithm_version: str | None = Query(None, min_length=1, max_length=100),
+    user=Depends(current_user), conn=Depends(get_conn),
 ):
     repo.get_demand(conn, demand_id)
-    return repo.list_matches(conn, demand_id, limit)
+    return repo.list_matches(conn, demand_id, limit, version=algorithm_version or engine.algorithm_version())
 
 
 @app.get("/matches/{match_id}/details", tags=["matching"], summary="Por que este score?")

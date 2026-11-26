@@ -284,13 +284,46 @@ def create_demand(
         (requester_id, title, description, status, deadline, budget, currency, document_id),
     ).fetchone()["id"]
     if tags:
-        with conn.cursor() as cur:
-            cur.executemany(
-                "INSERT INTO tb_demand_tags (demand_id, tag_id, tag_type, weight) "
-                "VALUES (%s, %s, %s, %s)",
-                [(demand_id, t, ty, w) for t, ty, w in tags],
-            )
+        insert_demand_tags(conn, demand_id, tags)
     return demand_id
+
+
+def lock_demand(conn: Connection, demand_id: int) -> str:
+    row = conn.execute(
+        "SELECT status FROM tb_demands WHERE id = %s FOR UPDATE", (demand_id,),
+    ).fetchone()
+    if row is None:
+        raise NotFound(f"demanda {demand_id} não existe")
+    return row["status"]
+
+
+def update_demand(
+    conn: Connection, demand_id: int, *, requester_id: int | None, title: str,
+    description: str | None, status: str, deadline: Any, budget: Any, currency: str,
+    document_id: int | None, tags: Sequence[tuple[int, str, float]],
+) -> None:
+    lock_demand(conn, demand_id)
+    existing_tags = demand_tags_for_matching(conn, demand_id)
+    conn.execute(
+        """
+        UPDATE tb_demands SET requester_id = %s, title = %s, description = %s,
+            status = %s, deadline = %s, budget = %s, currency = %s,
+            document_id = %s, updated_at = now() WHERE id = %s
+        """,
+        (requester_id, title, description, status, deadline, budget, currency, document_id, demand_id),
+    )
+    if sorted(existing_tags) != sorted(tags):
+        conn.execute("DELETE FROM tb_demand_tags WHERE demand_id = %s", (demand_id,))
+        insert_demand_tags(conn, demand_id, tags)
+        conn.execute("DELETE FROM tb_matches WHERE demand_id = %s", (demand_id,))
+
+
+def insert_demand_tags(conn: Connection, demand_id: int, tags: Sequence[tuple[int, str, float]]) -> None:
+    with conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO tb_demand_tags (demand_id, tag_id, tag_type, weight) VALUES (%s, %s, %s, %s)",
+            [(demand_id, tag_id, kind, weight) for tag_id, kind, weight in tags],
+        )
 
 
 def get_demand(conn: Connection, demand_id: int) -> dict:
@@ -446,15 +479,13 @@ def _detail_to_json(d: Any) -> dict:
     }
 
 
-def replace_matches(conn: Connection, demand_id: int, results: Sequence[Any]) -> int:
-    
-    if not results:
-        return 0
-    version = results[0].algorithm_version
+def replace_matches(conn: Connection, demand_id: int, version: str, results: Sequence[Any]) -> int:
     conn.execute(
         "DELETE FROM tb_matches WHERE demand_id = %s AND algorithm_version = %s",
         (demand_id, version),
     )
+    if not results:
+        return 0
     rows = [
         (
             demand_id,
@@ -488,17 +519,17 @@ def replace_matches(conn: Connection, demand_id: int, results: Sequence[Any]) ->
     return len(results)
 
 
-def list_matches(conn: Connection, demand_id: int, limit: int = 50) -> list[dict]:
+def list_matches(conn: Connection, demand_id: int, limit: int = 50, *, version: str) -> list[dict]:
     rows = conn.execute(
         """
         SELECT m.id, m.actor_id, a.name AS actor_name, m.score, m.match_type,
                m.score_details, m.algorithm_version, m.created_at
           FROM tb_matches m JOIN tb_actors a ON a.id = m.actor_id
-         WHERE m.demand_id = %s
-         ORDER BY m.score DESC, m.actor_id
+         WHERE m.demand_id = %s AND m.algorithm_version = %s
+         ORDER BY m.score DESC, (m.score_details ->> 'required_missing_count')::integer ASC NULLS LAST, m.actor_id
          LIMIT %s
         """,
-        (demand_id, limit),
+        (demand_id, version, limit),
     ).fetchall()
     for r in rows:
         r["required_missing_count"] = r["score_details"].get("required_missing_count")

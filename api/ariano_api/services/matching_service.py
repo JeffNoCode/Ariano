@@ -13,6 +13,10 @@ from .. import repository as repo
 from ..engine import bindings as engine
 
 
+class InactiveDemand(Exception):
+    """Oportunidades encerradas ou canceladas mantêm apenas a consulta ao ranking."""
+
+
 class DemandHasNoTags(Exception):
     """Demanda sem nenhuma tag: não há o que casar (o motor devolve NOT_EVALUABLE)."""
 
@@ -48,7 +52,9 @@ def run_matching(
     `persist=True` grava em tb_matches (score_details em jsonb), substituindo
     o resultado anterior da mesma versão de algoritmo.
     """
-    repo.get_demand(conn, demand_id)  # 404 antes de qualquer trabalho
+    status = repo.lock_demand(conn, demand_id) if persist else repo.get_demand(conn, demand_id)["status"]
+    if status in ("CLOSED", "CANCELLED"):
+        raise InactiveDemand("Reabra a oportunidade antes de recalcular o ranking.")
     demand_tags = repo.demand_tags_for_matching(conn, demand_id)
     if not demand_tags:
         raise DemandHasNoTags(f"demanda {demand_id} não tem tags")
@@ -82,7 +88,8 @@ def run_matching(
     )
 
     if persist:
-        repo.replace_matches(conn, demand_id, batch.results)
+        version = batch.results[0].algorithm_version if batch.results else engine.algorithm_version()
+        repo.replace_matches(conn, demand_id, version, batch.results)
 
     # Traduz IDs para códigos legíveis, para a resposta da API não obrigar
     # o cliente a fazer um segundo GET /tags.

@@ -216,6 +216,11 @@ static MatchClass classify(const MatchDetail *d, size_t n)
     return MATCH_CLASS_NONE;
 }
 
+const char *matcher_algorithm_version(void)
+{
+    return MATCHER_ALGORITHM_VERSION;
+}
+
 MatchConfig matcher_default_config(void)
 {
     MatchConfig c = { .desirable_share = 0.20 };
