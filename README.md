@@ -156,6 +156,13 @@ Implementação, endpoints `/bench/*` e como medir de novo:
 - **Ainda não existe:** scraping remoto (`pdf/downloader.py` está reservado
   para essa etapa). A autenticação local ainda precisa de reforços para produção.
 
+## Manuais e documentação consolidada
+
+- [Manual do Usuário](docs/sprint11/manual-usuario.md)
+- [Manual Técnico](docs/sprint11/manual-tecnico.md)
+- [Documentação consolidada](docs/sprint11/documentacao-consolidada.md)
+- [Registro de revisão da Sprint 11](docs/sprint11/README.md)
+
 ## Estrutura do repositório
 
 - `api/ariano_api/` contém a API FastAPI e a integração com o motor.
