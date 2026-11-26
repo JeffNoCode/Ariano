@@ -234,3 +234,20 @@ transação da operação correspondente.
 As rotas de consulta são `GET /demands`, `GET /reports/opportunities.csv` e
 `GET /operations`. A consulta de oportunidades e o CSV aceitam `q`, `status`,
 `date_from` e `date_to`.
+
+## Edição de oportunidades e permissões
+
+Editores e administradores podem editar uma oportunidade pelo detalhe ou via
+`PUT /demands/{id}`, inclusive para encerrar, cancelar ou reabrir a demanda.
+O ranking salvo permanece disponível para consulta após o encerramento.
+Um novo cálculo exige uma oportunidade aberta ou em análise.
+
+A edição de competências, pesos ou prioridades invalida o ranking antigo.
+Recalcular sem candidatos elegíveis remove os resultados da versão atual.
+A consulta de ranking usa a versão atual por padrão e aceita o parâmetro
+`algorithm_version` para recuperar resultados de outra versão ainda gravada.
+O desempate usa score, quantidade de obrigatórias ausentes e ID do ator.
+
+O cadastro público cria contas Leitor. Editores podem atualizar dados e
+consultar o histórico. A gestão de papéis é exclusiva de administradores,
+registra alterações no histórico e protege a última conta administradora ativa.

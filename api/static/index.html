@@ -84,22 +84,22 @@
             </div>
           </div>
           <div id="demand-create-view" hidden>
-            <div class="section-heading"><div><h1>Nova demanda</h1><p>Revise o edital e defina o que será considerado no ranking</p></div><button id="back-from-create" class="button secondary" type="button">Voltar</button></div>
+            <div class="section-heading"><div><h1 id="demand-form-title">Nova demanda</h1><p>Revise o edital e defina o que será considerado no ranking</p></div><button id="back-from-create" class="button secondary" type="button">Voltar</button></div>
             <form id="demand-form" class="demand-form">
               <div class="form-section"><h2>Documento</h2><label class="file-field">Edital em PDF (opcional)<input id="demand-pdf" type="file" accept=".pdf,application/pdf"></label><div class="form-actions"><button id="upload-document" class="button secondary" type="button">Ler PDF</button><span id="document-status" class="muted"></span></div><p id="document-message" class="message" role="alert" hidden></p><div id="document-review" class="review" hidden></div></div>
-              <div class="form-section"><h2>Dados da demanda</h2><div class="form-grid"><label class="wide">Título<input id="demand-title" required minlength="3" maxlength="180"></label><label class="wide">Descrição<textarea id="demand-description" maxlength="5000" rows="3"></textarea></label><label>Solicitante<select id="demand-requester"><option value="">Não informado</option></select></label><label>Prazo<input id="demand-deadline" type="date"></label><label>Orçamento (R$)<input id="demand-budget" type="number" min="0" step="0.01" inputmode="decimal"></label></div></div>
+              <div class="form-section"><h2>Dados da demanda</h2><div class="form-grid"><label class="wide">Título<input id="demand-title" required minlength="3" maxlength="180"></label><label class="wide">Descrição<textarea id="demand-description" maxlength="5000" rows="3"></textarea></label><label>Solicitante<select id="demand-requester"><option value="">Não informado</option></select></label><label>Prazo<input id="demand-deadline" type="date"></label><label><span id="demand-budget-label">Orçamento (BRL)</span><input id="demand-budget" type="number" min="0" step="0.01" inputmode="decimal"></label><label id="demand-form-status-label" hidden>Situação<select id="demand-form-status"><option value="OPEN">Aberta</option><option value="EVALUATING">Em análise</option><option value="CLOSED">Encerrada</option><option value="CANCELLED">Cancelada</option></select></label></div></div>
               <div class="form-section"><h2>Competências</h2><p class="muted">Selecione ao menos uma. O peso representa a importância relativa; competências obrigatórias têm prioridade no cálculo.</p><div id="demand-tag-options" class="demand-tag-options"></div></div>
               <p id="demand-form-message" class="message" role="alert" hidden></p><div class="form-actions end"><button id="save-demand" class="button primary" type="submit">Salvar e ver ranking</button></div>
             </form>
           </div>
           <div id="demand-detail-view" hidden>
-            <div class="section-heading"><div><h1 id="detail-title">Demanda</h1><p id="detail-subtitle"></p></div><button id="back-from-detail" class="button secondary" type="button">Voltar</button></div>
+            <div class="section-heading"><div><h1 id="detail-title">Demanda</h1><p id="detail-subtitle"></p></div><div class="form-actions"><button id="edit-demand" class="button secondary" type="button" hidden>Editar demanda</button><button id="back-from-detail" class="button secondary" type="button">Voltar</button></div></div>
             <div id="demand-kpis" class="kpi-strip"></div>
             <dl id="demand-facts" class="facts"></dl>
             <div id="detail-document" class="review" hidden></div>
             <h2 class="subheading">Competências solicitadas</h2><div id="detail-tags" class="selected-tags"></div>
             <div class="section-heading ranking-heading"><div><h2>Ranking</h2><p>Compatibilidade calculada pelo motor e salva no banco</p></div><button id="run-ranking" class="button primary" type="button">Calcular ranking</button></div>
-            <p id="ranking-message" class="message" role="alert" hidden></p><div id="ranking-summary" class="muted"></div>
+            <p id="ranking-inactive" class="muted" hidden>Reabra a oportunidade antes de recalcular o ranking.</p><p id="ranking-message" class="message" role="alert" hidden></p><div id="ranking-summary" class="muted"></div>
             <div class="ranking-layout"><div id="ranking-results" class="ranking-results"></div><aside id="score-panel" class="score-panel" hidden aria-live="polite"></aside></div>
           </div>
         </section>

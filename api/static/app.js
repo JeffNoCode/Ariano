@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const state = { token: sessionStorage.getItem("ariano_token"), user: null, actors: [], tags: [], demands: [], documentId: null, currentDemand: null, editing: null, mode: "login" };
+const state = { token: sessionStorage.getItem("ariano_token"), user: null, actors: [], tags: [], demands: [], documentId: null, currentDemand: null, editingDemand: null, editing: null, mode: "login" };
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const actorTypes = { SOLVER: "Solucionador", STARTUP: "Startup", ORGANIZATION: "Organização", GOVERNMENT_AGENCY: "Órgão público" };
 const actorStatuses = { ACTIVE: "Ativo", INACTIVE: "Inativo", SUSPENDED: "Suspenso" };
@@ -68,6 +68,7 @@ function showApp() {
   $("new-actor").hidden = state.user.role === "VIEWER";
   $("new-demand").hidden = state.user.role === "VIEWER";
   $("run-ranking").hidden = state.user.role === "VIEWER";
+  $("edit-demand").hidden = state.user.role === "VIEWER";
   $("nav-users").hidden = state.user.role !== "ADMIN";
   $("nav-history").hidden = state.user.role === "VIEWER";
   $("overview-new-demand").hidden = state.user.role === "VIEWER";
@@ -458,8 +459,8 @@ async function exportDemands() {
 
 async function loadHistory() {
   const rows = await api("/operations?limit=100");
-  const actions = { CREATE: "Cadastro", UPDATE: "Atualização", DELETE: "Exclusão", PROCESS: "Processamento", CALCULATE: "Cálculo" };
-  const entities = { ACTOR: "Ator", DEMAND: "Demanda", DOCUMENT: "Documento", RANKING: "Ranking da demanda" };
+  const actions = { CREATE: "Cadastro", UPDATE: "Atualização", DELETE: "Exclusão", PROCESS: "Processamento", CALCULATE: "Cálculo", CHANGE_ROLE: "Alteração de perfil" };
+  const entities = { ACTOR: "Ator", DEMAND: "Demanda", DOCUMENT: "Documento", RANKING: "Ranking da demanda", USER: "Usuário" };
   $("history-empty").hidden = rows.length > 0;
   $("history-rows").innerHTML = rows.map((row) => `<tr><td data-label="Data e hora">${esc(new Date(row.created_at).toLocaleString("pt-BR"))}</td><td data-label="Usuário">${esc(row.user_name || "Conta removida")}</td><td data-label="Ação">${esc(actions[row.action] || row.action)}</td><td data-label="Registro">${esc(entities[row.entity] || row.entity)} #${esc(row.entity_id)}</td></tr>`).join("");
 }
@@ -470,23 +471,48 @@ function renderDemands() {
   $("demand-rows").innerHTML = rows.map((item) => `<tr><td data-label="Demanda"><strong>${esc(item.title)}</strong><br><small>#${item.id}${item.document_id ? " · PDF vinculado" : ""}</small></td><td data-label="Solicitante">${esc(item.requester_name || "Não informado")}</td><td data-label="Status">${statusChip(item.status)}</td><td data-label="Competências">${item.tag_count}</td><td data-label="Resultados">${item.match_count}${item.best_score == null ? "" : ` <small>· melhor ${score3(item.best_score)}</small>`}</td><td data-label="Ação" class="row-actions"><button type="button" data-demand="${item.id}">Abrir</button></td></tr>`).join("");
 }
 
-function renderDemandTags(selectedCodes = []) {
+let demandFormTags = [];
+function renderDemandTags(selectedCodes = [], previousTags = []) {
   const selected = new Set(selectedCodes);
-  $("demand-tag-options").innerHTML = state.tags.map((tag) => `<div class="demand-tag-row"><label><input type="checkbox" class="demand-tag-check" value="${tag.id}" ${selected.has(tag.code) ? "checked" : ""}><span>${esc(tag.name)}</span></label><select class="demand-tag-type" aria-label="Tipo de ${esc(tag.name)}"><option value="REQUIRED">Obrigatória</option><option value="DESIRABLE">Desejável</option></select><label>Peso<input class="demand-tag-weight" type="number" min="0.01" step="0.01" value="1" aria-label="Peso de ${esc(tag.name)}"></label></div>`).join("") || '<p class="empty">Nenhuma competência cadastrada. Cadastre competências pela API antes de criar demandas.</p>';
+  const previous = new Map(previousTags.map((tag) => [tag.tag_id, tag]));
+  $("demand-tag-options").innerHTML = demandFormTags.map((tag) => {
+    const entry = previous.get(tag.id);
+    return `<div class="demand-tag-row"><label><input type="checkbox" class="demand-tag-check" value="${tag.id}" ${entry || selected.has(tag.code) ? "checked" : ""}><span>${esc(tag.name)}</span></label><select class="demand-tag-type" aria-label="Tipo de ${esc(tag.name)}"><option value="REQUIRED">Obrigatória</option><option value="DESIRABLE" ${entry?.tag_type === "DESIRABLE" ? "selected" : ""}>Desejável</option></select><label>Peso<input class="demand-tag-weight" type="number" min="0" step="any" value="${esc(entry?.weight ?? 1)}" aria-label="Peso de ${esc(tag.name)}"></label></div>`;
+  }).join("") || '<p class="empty">Nenhuma competência cadastrada. Cadastre competências pela API antes de criar demandas.</p>';
 }
 
-async function startDemand() {
+async function startDemand(demand = null) {
   try {
     await loadTags();
     state.actors = await api("/actors?limit=500");
-    state.documentId = null;
+    demandFormTags = state.tags;
+    if (demand) {
+      const previous = new Set(demand.tags.map((item) => item.tag_id));
+      demandFormTags = (await api("/tags")).filter((tag) => tag.is_active || previous.has(tag.id));
+    }
+    state.editingDemand = demand;
+    state.documentId = demand?.document_id ?? null;
     $("demand-form").reset();
-    $("document-status").textContent = "";
+    $("document-status").textContent = state.documentId ? `Documento vinculado #${state.documentId}` : "";
     $("document-review").hidden = true;
     showMessage("document-message", "");
     showMessage("demand-form-message", "");
-    $("demand-requester").innerHTML = '<option value="">Não informado</option>' + state.actors.map((actor) => `<option value="${actor.id}">${esc(actor.name)}</option>`).join("");
-    renderDemandTags();
+    const options = state.actors.map((actor) => `<option value="${actor.id}">${esc(actor.name)}</option>`);
+    if (demand?.requester_id && !state.actors.some((actor) => actor.id === demand.requester_id)) {
+      options.push(`<option value="${demand.requester_id}">Solicitante #${demand.requester_id}</option>`);
+    }
+    $("demand-requester").innerHTML = '<option value="">Não informado</option>' + options.join("");
+    $("demand-form-title").textContent = demand ? "Editar demanda" : "Nova demanda";
+    $("save-demand").textContent = demand ? "Salvar alterações" : "Salvar e ver ranking";
+    $("demand-form-status-label").hidden = !demand;
+    $("demand-budget-label").textContent = `Orçamento (${demand?.currency || "BRL"})`;
+    $("demand-title").value = demand?.title || "";
+    $("demand-description").value = demand?.description || "";
+    $("demand-requester").value = demand?.requester_id ?? "";
+    $("demand-deadline").value = demand?.deadline || "";
+    $("demand-budget").value = demand?.budget ?? "";
+    $("demand-form-status").value = demand?.status || "OPEN";
+    renderDemandTags([], demand?.tags);
     showDemandPanel("create");
     $("demand-title").focus();
   } catch (error) { notify(error.message); }
@@ -516,8 +542,8 @@ async function uploadDocument() {
     const budget = tracked(payload.financial?.budget);
     if (budget != null) $("demand-budget").value = budget;
     const codes = (payload.competencies || []).map((item) => item.code);
-    renderDemandTags(codes);
-    const recognized = codes.filter((code) => state.tags.some((tag) => tag.code === code));
+    const recognized = codes.filter((code) => demandFormTags.some((tag) => tag.is_active && tag.code === code));
+    renderDemandTags(recognized);
     $("document-review").innerHTML = `<strong>Revisão da extração</strong><p>${esc(title || "Título não identificado")} · ${esc(recognized.length)} competência(s) selecionada(s)</p><p>${esc((payload.extraction_warnings || []).length ? "Alguns campos não foram identificados; confira os dados antes de salvar." : "Confira os dados antes de salvar.")}</p>`;
     $("document-review").hidden = false;
     $("document-status").textContent = result.already_existed ? "PDF já registrado; dados recuperados." : "PDF processado e salvo.";
@@ -542,7 +568,8 @@ function demandPayload() {
   if (budget !== null && (!Number.isFinite(budget) || budget < 0)) throw new Error("O orçamento deve ser um valor igual ou maior que zero.");
   return { title, description: $("demand-description").value.trim() || null,
     requester_id: $("demand-requester").value ? Number($("demand-requester").value) : null,
-    deadline: $("demand-deadline").value || null, budget, document_id: state.documentId, tags };
+    deadline: $("demand-deadline").value || null, budget, status: $("demand-form-status").value,
+    currency: state.editingDemand?.currency || "BRL", document_id: state.documentId, tags };
 }
 
 async function saveDemand(event) {
@@ -552,9 +579,13 @@ async function saveDemand(event) {
   try {
     const payload = demandPayload();
     button.disabled = true;
-    const demand = await api("/demands", { method: "POST", body: JSON.stringify(payload) });
+    const editing = state.editingDemand;
+    const demand = await api(editing ? `/demands/${editing.id}` : "/demands", {
+      method: editing ? "PUT" : "POST", body: JSON.stringify(payload),
+    });
+    state.editingDemand = null;
     await loadDemands();
-    notify("Demanda salva.");
+    notify(editing ? "Alterações salvas." : "Demanda salva.");
     await openDemand(demand.id);
   } catch (error) { showMessage("demand-form-message", error.message); }
   finally { button.disabled = false; }
@@ -565,6 +596,9 @@ async function openDemand(id) {
     await loadTags();
     const demand = await api(`/demands/${id}`);
     state.currentDemand = demand;
+    const inactive = ["CLOSED", "CANCELLED"].includes(demand.status);
+    $("run-ranking").hidden = inactive || state.user.role === "VIEWER";
+    $("ranking-inactive").hidden = !inactive || state.user.role === "VIEWER";
     $("detail-title").textContent = demand.title;
     $("detail-subtitle").textContent = `Demanda #${demand.id} · ${demandStatuses[demand.status] || demand.status}`;
     $("demand-facts").innerHTML = `<div><dt>Prazo</dt><dd>${demand.deadline ? esc(new Date(`${demand.deadline}T12:00:00`).toLocaleDateString("pt-BR")) : "Não informado"}</dd></div><div><dt>Orçamento</dt><dd>${demand.budget == null ? "Não informado" : esc(Number(demand.budget).toLocaleString("pt-BR", { style: "currency", currency: demand.currency || "BRL" }))}</dd></div><div><dt>Descrição</dt><dd>${esc(demand.description || "Não informada")}</dd></div>`;
@@ -683,11 +717,21 @@ async function initialize() {
   $("demand-prev").addEventListener("click", () => { demandOffset -= demandPageSize; loadDemands(); });
   $("demand-next").addEventListener("click", () => { demandOffset += demandPageSize; loadDemands(); });
   $("demand-rows").addEventListener("click", (event) => { const button = event.target.closest("button[data-demand]"); if (button) openDemand(Number(button.dataset.demand)); });
-  $("new-demand").addEventListener("click", startDemand);
-  $("back-from-create").addEventListener("click", () => { showDemandPanel("list"); loadDemands().catch((error) => notify(error.message)); });
+  $("new-demand").addEventListener("click", () => startDemand());
+  $("edit-demand").addEventListener("click", () => startDemand(state.currentDemand));
+  $("back-from-create").addEventListener("click", () => {
+    const editing = state.editingDemand;
+    state.editingDemand = null;
+    if (editing) openDemand(editing.id);
+    else { showDemandPanel("list"); loadDemands(); }
+  });
   $("back-from-detail").addEventListener("click", () => { showDemandPanel("list"); loadDemands().catch((error) => notify(error.message)); });
   $("upload-document").addEventListener("click", uploadDocument);
-  $("demand-pdf").addEventListener("change", () => { state.documentId = null; $("document-status").textContent = ""; $("document-review").hidden = true; });
+  $("demand-pdf").addEventListener("change", () => {
+    state.documentId = $("demand-pdf").files.length ? null : (state.editingDemand?.document_id ?? null);
+    $("document-status").textContent = state.documentId ? `Documento vinculado #${state.documentId}` : "";
+    $("document-review").hidden = true;
+  });
   $("demand-form").addEventListener("submit", saveDemand);
   $("run-ranking").addEventListener("click", runRanking);
   $("refresh-actors").addEventListener("click", () => loadActors().catch((error) => notify(error.message)));
