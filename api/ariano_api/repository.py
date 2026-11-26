@@ -1,6 +1,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import json
 from typing import Any, Sequence
 
@@ -313,9 +315,26 @@ def get_demand(conn: Connection, demand_id: int) -> dict:
     return demand
 
 
-def list_demands(conn: Connection, limit: int = 50, offset: int = 0) -> list[dict]:
+def list_demands(
+    conn: Connection, limit: int | None = 50, offset: int = 0, *,
+    q: str = "", status: str | None = None, date_from: date | None = None, date_to: date | None = None,
+) -> list[dict]:
+    conditions, params = [], []
+    if q.strip():
+        conditions.append("strpos(lower(concat_ws(' ', d.title, a.name)), lower(%s)) > 0")
+        params.append(q.strip())
+    if status is not None:
+        conditions.append("d.status = %s")
+        params.append(status)
+    if date_from is not None:
+        conditions.append("d.created_at >= (%s::date::timestamp AT TIME ZONE 'America/Recife')")
+        params.append(date_from)
+    if date_to is not None:
+        conditions.append("d.created_at < ((%s::date + 1)::timestamp AT TIME ZONE 'America/Recife')")
+        params.append(date_to)
+    where = "WHERE " + " AND ".join(conditions) if conditions else ""
     return conn.execute(
-        """
+        f"""
         SELECT d.id, d.title, d.status, d.deadline, d.budget, d.currency,
                d.document_id, d.created_at, a.name AS requester_name,
                count(DISTINCT dt.tag_id) AS tag_count,
@@ -325,11 +344,12 @@ def list_demands(conn: Connection, limit: int = 50, offset: int = 0) -> list[dic
           LEFT JOIN tb_actors a ON a.id = d.requester_id
           LEFT JOIN tb_demand_tags dt ON dt.demand_id = d.id
           LEFT JOIN tb_matches m ON m.demand_id = d.id
+         {where}
          GROUP BY d.id, a.name
          ORDER BY d.created_at DESC, d.id DESC
          LIMIT %s OFFSET %s
         """,
-        (limit, offset),
+        (*params, limit, offset),
     ).fetchall()
 
 
@@ -501,3 +521,21 @@ def get_match_details(conn: Connection, match_id: int) -> list[dict] | None:
         d["actor_tag_code"] = codes.get(d["actor_tag_id"]) if d.get("actor_tag_id") else None
     return details
 
+
+
+def record_operation(conn: Connection, user_id: int, action: str, entity: str, entity_id: int) -> None:
+    conn.execute(
+        "INSERT INTO tb_operation_log (user_id, action, entity, entity_id) VALUES (%s, %s, %s, %s)",
+        (user_id, action, entity, entity_id),
+    )
+
+
+def list_operations(conn: Connection, limit: int, offset: int) -> list[dict]:
+    return conn.execute(
+        """
+        SELECT l.id, l.action, l.entity, l.entity_id, l.created_at, u.name AS user_name
+          FROM tb_operation_log l LEFT JOIN tb_users u ON u.id = l.user_id
+         ORDER BY l.created_at DESC, l.id DESC LIMIT %s OFFSET %s
+        """,
+        (limit, offset),
+    ).fetchall()

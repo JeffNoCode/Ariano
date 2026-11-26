@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import csv
+import io
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import psycopg
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from . import auth_repository as auth_repo, bootstrap, db, repository as repo, security
 from .engine import bindings as engine
 from .models import ActorIn, DemandIn, LoginIn, MatchOptions, RegisterIn, RelationIn, RoleUpdateIn, TagIn, TagOut
-from .models import EngineBenchIn, PdfBenchIn
+from .models import DemandStatusName, EngineBenchIn, PdfBenchIn
 from .services import bench_service, document_service, matching_service
 
 API_DESCRIPTION = """
@@ -177,6 +179,7 @@ def login(payload: LoginIn, conn=Depends(get_conn)):
     token = security.new_token()
     expires_at = datetime.now(timezone.utc) + timedelta(hours=12)
     auth_repo.create_session(conn, security.token_hash(token), user["id"], expires_at)
+    conn.commit()
     return {"access_token": token, "token_type": "bearer", "expires_at": expires_at}
 
 
@@ -261,7 +264,9 @@ def create_actor(payload: ActorIn, user=Depends(editor_required), conn=Depends(g
         raise HTTPException(422, "alguma tag informada não existe")
     except psycopg.errors.UniqueViolation:
         raise HTTPException(422, "tag repetida na lista do ator")
-    return repo.get_actor(conn, actor_id)
+    actor = repo.get_actor(conn, actor_id)
+    complete_operation(conn, user, "CREATE", "ACTOR", actor_id)
+    return actor
 
 
 @app.get("/actors", tags=["atores"])
@@ -280,7 +285,7 @@ def get_actor(actor_id: int, user=Depends(current_user), conn=Depends(get_conn))
 @app.put("/actors/{actor_id}", tags=["atores"])
 def update_actor(actor_id: int, payload: ActorIn, user=Depends(editor_required), conn=Depends(get_conn)):
     try:
-        return repo.update_actor(
+        actor = repo.update_actor(
             conn, actor_id, actor_type=payload.type, name=payload.name,
             description=payload.description, document=payload.document,
             document_type=payload.document_type, status=payload.status,
@@ -293,6 +298,8 @@ def update_actor(actor_id: int, payload: ActorIn, user=Depends(editor_required),
         raise HTTPException(422, "alguma tag informada não existe")
     except psycopg.errors.UniqueViolation:
         raise HTTPException(422, "tag repetida na lista do ator")
+    complete_operation(conn, user, "UPDATE", "ACTOR", actor_id)
+    return actor
 
 
 @app.delete("/actors/{actor_id}", tags=["atores"], status_code=204)
@@ -301,6 +308,7 @@ def delete_actor(actor_id: int, user=Depends(editor_required), conn=Depends(get_
         repo.delete_actor(conn, actor_id)
     except psycopg.errors.ForeignKeyViolation:
         raise HTTPException(409, "ator vinculado a uma demanda; exclusão não permitida")
+    complete_operation(conn, user, "DELETE", "ACTOR", actor_id)
 
 
 @app.post("/demands", tags=["demandas"], status_code=201)
@@ -322,15 +330,26 @@ def create_demand(payload: DemandIn, user=Depends(editor_required), conn=Depends
         raise HTTPException(
             422, "requester_id, document_id ou alguma tag informada não existe"
         )
-    return repo.get_demand(conn, demand_id)
+    demand = repo.get_demand(conn, demand_id)
+    complete_operation(conn, user, "CREATE", "DEMAND", demand_id)
+    return demand
+
+
+def opportunity_filters(
+    q: str = Query("", max_length=180), status: DemandStatusName | None = None,
+    date_from: date | None = None, date_to: date | None = None,
+) -> dict:
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(422, "A data inicial deve ser anterior ou igual à data final.")
+    return {"q": q, "status": status, "date_from": date_from, "date_to": date_to}
 
 
 @app.get("/demands", tags=["demandas"])
 def list_demands(
     limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
-    user=Depends(current_user), conn=Depends(get_conn),
+    filters=Depends(opportunity_filters), user=Depends(current_user), conn=Depends(get_conn),
 ):
-    return repo.list_demands(conn, limit, offset)
+    return repo.list_demands(conn, limit, offset, **filters)
 
 
 @app.get("/demands/{demand_id}", tags=["demandas"])
@@ -345,7 +364,7 @@ def get_demand(demand_id: int, user=Depends(current_user), conn=Depends(get_conn
 )
 def run_match(demand_id: int, options: MatchOptions = MatchOptions(), user=Depends(editor_required), conn=Depends(get_conn)):
     try:
-        return matching_service.run_matching(
+        result = matching_service.run_matching(
             conn,
             demand_id,
             threshold=options.threshold,
@@ -366,6 +385,11 @@ def run_match(demand_id: int, options: MatchOptions = MatchOptions(), user=Depen
                 "actor_id": exc.failed_actor_id,
             },
         )
+
+
+    if options.persist:
+        complete_operation(conn, user, "CALCULATE", "RANKING", demand_id)
+    return result
 
 
 @app.get("/demands/{demand_id}/matches", tags=["matching"], summary="Ranking já gravado")
@@ -407,6 +431,8 @@ def ingest_document(file: UploadFile = File(...), user=Depends(editor_required),
         raise HTTPException(504, "o scraper excedeu o tempo limite")
 
     row = repo.insert_document(conn, payload)
+    if not row["already_existed"]:
+        complete_operation(conn, user, "PROCESS", "DOCUMENT", row["id"])
     return {
         "id": row["id"],
         "document_hash": row["document_hash"],
@@ -421,3 +447,40 @@ def ingest_document(file: UploadFile = File(...), user=Depends(editor_required),
 def get_document(document_id: int, user=Depends(current_user), conn=Depends(get_conn)):
     return repo.get_document(conn, document_id)
 
+
+
+def complete_operation(conn, user: dict, action: str, entity: str, entity_id: int) -> None:
+    # Dados e evento são confirmados juntos antes da resposta de sucesso.
+    repo.record_operation(conn, user["id"], action, entity, entity_id)
+    conn.commit()
+
+
+def spreadsheet_text(value: str | None) -> str:
+    text = value or ""
+    if text.lstrip().startswith(("=", "+", "-", "@")) or text.startswith(("\t", "\r", "\n")):
+        return "'" + text
+    return text
+
+
+@app.get("/reports/opportunities.csv", tags=["relatórios"], response_class=Response)
+def export_opportunities(filters=Depends(opportunity_filters), user=Depends(current_user), conn=Depends(get_conn)):
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow(["ID", "Demanda", "Solicitante", "Situação", "Prazo", "Competências", "Resultados", "Melhor score"])
+    for row in repo.list_demands(conn, limit=None, **filters):
+        writer.writerow([
+            row["id"], spreadsheet_text(row["title"]), spreadsheet_text(row["requester_name"]),
+            row["status"], row["deadline"], row["tag_count"], row["match_count"], row["best_score"],
+        ])
+    return Response(
+        output.getvalue().encode("utf-8-sig"), media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="oportunidades.csv"', "Cache-Control": "no-store"},
+    )
+
+
+@app.get("/operations", tags=["histórico"])
+def list_operations(
+    limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),
+    user=Depends(editor_required), conn=Depends(get_conn),
+):
+    return repo.list_operations(conn, limit, offset)
