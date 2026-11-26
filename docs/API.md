@@ -1,6 +1,6 @@
 # API do ARIANO
 
-Versão **1.0.0-rc.1**. A API é servida pelo mesmo processo da interface.
+Versão **1.0.0**. A API é servida pelo mesmo processo da interface.
 No ambiente local, use a base http://localhost:8000. O Swagger fica em
 [`/docs`](http://localhost:8000/docs) e o contrato gerado em
 [`/openapi.json`](http://localhost:8000/openapi.json).

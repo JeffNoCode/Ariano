@@ -1,6 +1,6 @@
 # ARIANO
 
-**Release Candidate:** [v1.0.0-rc.1](https://github.com/JeffNoCode/Ariano/tree/v1.0.0-rc.1)
+**Versão final** [v1.0.0](https://github.com/JeffNoCode/Ariano/tree/v1.0.0)
 
 > **Novo no projeto?** Comece pelo [COMO_FUNCIONA.md](COMO_FUNCIONA.md), o passo a
 > passo do fluxo completo. Para publicar online, veja [docs/DEPLOY.md](docs/DEPLOY.md).
@@ -78,7 +78,7 @@ motor C17 e usa PostgreSQL 16. A interface é servida pela própria API.
 ```bash
 git clone https://github.com/JeffNoCode/Ariano.git
 cd Ariano
-git checkout v1.0.0-rc.1
+git checkout v1.0.0
 cd api
 docker compose --profile full up -d --build --wait
 docker compose --profile full exec api python -m scripts.bootstrap_admin --email admin@ariano.local
@@ -96,7 +96,8 @@ se conecta internamente a `db:5432`. Em instalação fora do Compose, configure
 `DATABASE_URL` com a conexão PostgreSQL do ambiente.
 
 Consulte a [referência HTTP](docs/API.md), o [guia da API](api/README.md)
-e o [registro da Release Candidate](docs/sprint10/README.md).
+e o [registro da entrega final](docs/sprint12/README.md).
+O [registro da Release Candidate](docs/sprint10/README.md) permanece no histórico.
 
 ### Online
 
