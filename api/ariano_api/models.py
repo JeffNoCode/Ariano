@@ -142,3 +142,16 @@ class MatchOptions(BaseModel):
     )
     persist: bool = Field(default=False, description="Gravar o ranking em tb_matches.")
 
+
+
+class EngineBenchIn(BaseModel):
+    """Tamanho da base sintética e número de threads do teste do motor."""
+
+    actors: Literal[50_000, 100_000, 200_000] = 100_000
+    threads: Literal[2, 4, 8] = 4
+
+
+class PdfBenchIn(BaseModel):
+    """Quantos editais o scraper lê ao mesmo tempo na segunda fase do teste."""
+
+    concurrency: Literal[2, 3, 4] = 2

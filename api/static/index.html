@@ -31,6 +31,7 @@
         <button class="nav-item active" id="nav-overview" type="button">Visão geral</button>
         <button class="nav-item" id="nav-demands" type="button">Oportunidades</button>
         <button class="nav-item" id="nav-actors" type="button">Atores</button>
+        <button class="nav-item" id="nav-performance" type="button">Desempenho</button>
         <button class="nav-item" id="nav-users" type="button" hidden>Usuários</button>
       </nav>
       <div class="sidebar-bottom"><span id="signed-user"></span><button id="logout" type="button">Sair</button></div>
@@ -93,6 +94,43 @@
           <div class="toolbar"><input id="actor-search" type="search" placeholder="Buscar ator" aria-label="Buscar ator"><button id="refresh-actors" class="button secondary" type="button">Atualizar</button></div>
           <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Cidade</th><th>Status</th><th>Competências</th><th>Ações</th></tr></thead><tbody id="actor-rows"></tbody></table></div>
           <p id="actor-empty" class="empty" hidden>Nenhum ator encontrado.</p>
+        </section>
+        <section id="performance-section" hidden>
+          <div class="section-heading"><div><h1>Desempenho</h1><p>Sequencial x paralelo, medido ao vivo neste servidor</p></div></div>
+          <div id="bench-server" class="bench-server"></div>
+
+          <div class="panel">
+            <div class="panel-heading"><div><h2>Motor de matching em C · threads</h2><p class="muted">Uma base fictícia de atores é avaliada com 1 thread e depois dividida entre várias threads (pthreads). Cada barra é uma thread.</p></div></div>
+            <div class="bench-controls">
+              <label>Atores na base<select id="bench-actors"></select></label>
+              <label>Threads no paralelo<select id="bench-threads"></select></label>
+              <button id="run-engine-bench" class="button primary" type="button">Executar teste do motor</button>
+            </div>
+            <p id="engine-message" class="message" role="alert" hidden></p>
+            <p id="engine-phase" class="bench-phase" aria-live="polite"></p>
+            <div id="engine-runs" class="bench-runs"></div>
+            <div id="engine-result" class="bench-result" aria-live="polite"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading"><div><h2>Leitura de editais · processos</h2><p class="muted">Os mesmos editais em PDF são lidos pelo scraper um de cada vez e depois vários ao mesmo tempo. Cada barra é uma leitura, posicionada no tempo.</p></div></div>
+            <div class="bench-controls">
+              <label>Ao mesmo tempo<select id="bench-concurrency"></select></label>
+              <button id="run-pdf-bench" class="button primary" type="button">Executar teste dos editais</button>
+            </div>
+            <p id="pdf-message" class="message" role="alert" hidden></p>
+            <p id="pdf-phase" class="bench-phase" aria-live="polite"></p>
+            <div id="pdf-timeline" class="bench-timeline"></div>
+            <div id="pdf-result" class="bench-result" aria-live="polite"></div>
+          </div>
+
+          <div class="panel" id="bench-reference-panel" hidden>
+            <div class="panel-heading"><div><h2>Referência: medido num computador da equipe</h2><p class="muted" id="bench-reference-note"></p></div></div>
+            <div id="bench-reference-engine" class="bench-runs"></div>
+            <div id="bench-reference-engine-result" class="bench-result"></div>
+            <div id="bench-reference-pdf" class="bench-timeline"></div>
+            <div id="bench-reference-pdf-result" class="bench-result"></div>
+          </div>
         </section>
         <section id="users-section" hidden>
           <div class="section-heading"><div><h1>Usuários</h1><p>Perfis de acesso</p></div></div>

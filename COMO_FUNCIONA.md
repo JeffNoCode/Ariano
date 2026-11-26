@@ -117,6 +117,11 @@ Cada ator no ranking mostra score, classe (**Exata**, **Relacionada**, **Parcial
 e, ao clicar, o quadro **"Por que este score?"** com a cobertura de cada
 competência e de onde veio a evidência.
 
+### Extra — Desempenho (paralelismo)
+A página **Desempenho** compara, ao vivo, o motor com 1 thread e com várias
+threads (uma barra por thread) e a leitura de editais um de cada vez e vários
+ao mesmo tempo (linha do tempo). Detalhes em [docs/PARALELISMO.md](docs/PARALELISMO.md).
+
 ## 5. Como o score é calculado
 
 Para cada competência pedida pela demanda, o motor procura evidência no ator:

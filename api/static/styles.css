@@ -210,3 +210,41 @@ dialog h3{font-size:14px;margin:20px 0 10px}
   .toolbar{flex-wrap:wrap}
   .toolbar input{flex:1 1 180px;width:auto}
 }
+
+/* ---- Desempenho: barras por thread e linha do tempo dos editais ---- */
+.panel-heading .muted{margin:4px 0 0;font-size:13px}
+.bench-server{margin-bottom:16px}
+.bench-server-card{display:grid;gap:4px;background:#fff;border:1px solid #d9e1e4;border-left:4px solid #176b5b;border-radius:6px;padding:12px 16px}
+.bench-server-card span{color:#4d6670}
+.bench-server-card p{margin:4px 0 0;color:#6b5200;font-size:13px;line-height:1.45}
+.bench-server-card.warn{border-left-color:#d49b1f;background:#fffbf1}
+.bench-controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:6px 0 12px}
+.bench-controls label{min-width:150px}
+.bench-phase{min-height:18px;margin:0 0 8px;color:#176b5b;font-weight:650;font-size:13px}
+.bench-runs{display:grid;gap:12px}
+.bench-run{border:1px solid #e1e8e9;border-radius:6px;padding:12px 14px;background:#fafcfc;display:grid;gap:7px}
+.bench-run.done{background:#fff}
+.bench-run-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
+.thread-bar{display:grid;grid-template-columns:30px minmax(0,1fr) 42px;align-items:center;gap:9px;font-size:12px;color:#4d6670}
+.thread-bar small{text-align:right}
+.bar.big{height:12px;border-radius:6px}
+.bar.big i{transition:width .15s linear;border-radius:6px}
+.bench-run.running .bar.big i{background:linear-gradient(90deg,#176b5b,#2f9a83)}
+.bench-result:empty{display:none}
+.bench-result{margin-top:14px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;border-top:1px solid #e7ecee;padding-top:12px}
+.speedup{display:grid;gap:2px}
+.speedup strong{font-size:34px;line-height:1;color:#176b5b}
+.speedup span{font-size:12px;color:#4d6670}
+.bench-facts{margin:0;padding-left:18px;color:#4d6670;font-size:13px;line-height:1.6}
+.bench-timeline{display:grid;gap:14px}
+.bench-timeline:empty{display:none}
+.tl-group{border:1px solid #e1e8e9;border-radius:6px;padding:12px 14px;background:#fff;display:grid;gap:7px}
+.tl-row{display:grid;grid-template-columns:96px minmax(0,1fr) 58px;align-items:center;gap:9px;font-size:12px;color:#4d6670}
+.tl-row small{text-align:right}
+.tl-track{position:relative;height:14px;background:#eef2f3;border-radius:7px;overflow:hidden}
+.tl-track i{position:absolute;top:0;bottom:0;border-radius:7px;background:#176b5b}
+.tl-track i.running{background:repeating-linear-gradient(45deg,#2f9a83 0 8px,#176b5b 8px 16px);animation:tl-move 1s linear infinite;background-size:22px 22px}
+.tl-track i.error{background:#a33923}
+@keyframes tl-move{to{background-position:22px 0}}
+#bench-reference-panel .bench-timeline{margin-top:14px}
+@media(max-width:520px){.bench-controls label{flex:1 1 140px;min-width:0}.tl-row{grid-template-columns:70px minmax(0,1fr) 50px}.speedup strong{font-size:28px}}

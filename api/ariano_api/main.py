@@ -13,7 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from . import auth_repository as auth_repo, bootstrap, db, repository as repo, security
 from .engine import bindings as engine
 from .models import ActorIn, DemandIn, LoginIn, MatchOptions, RegisterIn, RelationIn, RoleUpdateIn, TagIn, TagOut
-from .services import document_service, matching_service
+from .models import EngineBenchIn, PdfBenchIn
+from .services import bench_service, document_service, matching_service
 
 API_DESCRIPTION = """
 Matching entre **atores** (quem tem competências) e **demandas** (quem precisa
@@ -115,6 +116,46 @@ def health(conn=Depends(get_conn)) -> dict:
 @app.get("/stats", tags=["infra"], summary="Indicadores do painel Visão geral")
 def stats(user=Depends(current_user), conn=Depends(get_conn)) -> dict:
     return repo.overview_stats(conn)
+
+
+@app.get("/bench/info", tags=["desempenho"], summary="CPU do servidor e resultados de referência")
+def bench_info(user=Depends(current_user)) -> dict:
+    return {
+        "server": bench_service.cpu_info(),
+        "reference": bench_service.reference(),
+        "options": {
+            "actors": list(bench_service.ACTOR_CHOICES),
+            "threads": list(bench_service.THREAD_CHOICES),
+            "concurrency": list(bench_service.CONCURRENCY_CHOICES),
+            "pdfs": [p.name for p in bench_service.pdf_files()],
+        },
+    }
+
+
+@app.post("/bench/engine", tags=["desempenho"], status_code=202,
+          summary="Motor em C: 1 thread x N threads, com progresso ao vivo")
+def bench_engine(payload: EngineBenchIn, user=Depends(current_user)) -> dict:
+    try:
+        return bench_service.start_engine(payload.actors, payload.threads)
+    except bench_service.Busy as exc:
+        raise HTTPException(409, str(exc))
+
+
+@app.post("/bench/pdfs", tags=["desempenho"], status_code=202,
+          summary="Editais: um de cada vez x N ao mesmo tempo")
+def bench_pdfs(payload: PdfBenchIn, user=Depends(current_user)) -> dict:
+    try:
+        return bench_service.start_pdfs(payload.concurrency)
+    except bench_service.Busy as exc:
+        raise HTTPException(409, str(exc))
+
+
+@app.get("/bench/jobs/{job_id}", tags=["desempenho"], summary="Andamento de um teste")
+def bench_job(job_id: str, user=Depends(current_user)) -> dict:
+    job = bench_service.snapshot(job_id)
+    if job is None:
+        raise HTTPException(404, "teste não encontrado (o servidor pode ter reiniciado)")
+    return job
 
 
 @app.post("/auth/register", tags=["acesso"], status_code=201)

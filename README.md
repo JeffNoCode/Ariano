@@ -2,6 +2,8 @@
 
 > **Novo no projeto?** Comece pelo [COMO_FUNCIONA.md](COMO_FUNCIONA.md), o passo a
 > passo do fluxo completo. Para publicar online, veja [docs/DEPLOY.md](docs/DEPLOY.md).
+> Paralelismo (threads no motor em C, processos no scraper) e a página
+> **Desempenho**: [docs/PARALELISMO.md](docs/PARALELISMO.md).
 
 Projeto em três módulos: um **pipeline de extração** que transforma editais em PDF
 num JSON estruturado, um **motor de matching em C** que pontua a compatibilidade

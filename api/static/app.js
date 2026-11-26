@@ -74,7 +74,7 @@ function showApp() {
   switchView("overview");
 }
 
-const views = { overview: "Visão geral", demands: "Oportunidades", actors: "Atores", users: "Usuários" };
+const views = { overview: "Visão geral", demands: "Oportunidades", actors: "Atores", performance: "Desempenho", users: "Usuários" };
 
 function switchView(view) {
   Object.keys(views).forEach((name) => {
@@ -84,6 +84,7 @@ function switchView(view) {
   $("page-label").textContent = views[view];
   document.title = `ARIANO | ${views[view]}`;
   if (view === "overview") loadOverview().catch((error) => notify(error.message));
+  if (view === "performance") loadPerformance().catch((error) => notify(error.message));
   if (view === "demands") { showDemandPanel("list"); loadDemands().catch((error) => notify(error.message)); }
   if (view === "actors") loadActors().catch((error) => notify(error.message));
   if (view === "users") loadUsers().catch((error) => notify(error.message));
@@ -264,6 +265,125 @@ async function loadOverview() {
   const ecosystem = [["Startups", stats.startups], ["Profissionais (solucionadores)", stats.solvers], ["Organizações", stats.organizations], ["Órgãos públicos", stats.government_agencies]];
   const total = Math.max(1, stats.actors);
   $("overview-ecosystem").innerHTML = ecosystem.map(([label, value]) => `<li><span>${esc(label)}</span><strong>${esc(value)}</strong><i style="--share:${(value / total) * 100}%"></i></li>`).join("");
+}
+
+/* ------------------------------------------------------------ Desempenho */
+
+const secs = (ms) => `${(Number(ms || 0) / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} s`;
+const times = (value) => `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}×`;
+const intBR = (value) => Number(value || 0).toLocaleString("pt-BR");
+
+async function loadPerformance() {
+  const info = await api("/bench/info");
+  const fill = (id, values, current, format) => {
+    const keep = $(id).value || current;
+    $(id).innerHTML = values.map((v) => `<option value="${v}" ${String(v) === String(keep) ? "selected" : ""}>${format(v)}</option>`).join("");
+  };
+  fill("bench-actors", info.options.actors, 100000, (v) => `${intBR(v)} atores`);
+  fill("bench-threads", info.options.threads, 4, (v) => `${v} threads`);
+  fill("bench-concurrency", info.options.concurrency, 2, (v) => `${v} editais`);
+  const s = info.server;
+  const quota = s.cpu_quota == null ? "sem limite de cota" : `cota de ${s.cpu_quota.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} CPU`;
+  const weak = s.cpu_quota != null && s.cpu_quota < 1.5;
+  $("bench-server").innerHTML = `<div class="bench-server-card ${weak ? "warn" : ""}"><strong>Este servidor</strong><span>${s.usable_cpus} núcleo(s) visíveis · ${esc(quota)}</span>${weak ? "<p>Com menos de 2 CPUs de cota, as threads disputam o mesmo processador e o ganho do paralelo aqui é pequeno. Compare com a referência medida num computador da equipe, no fim da página.</p>" : ""}</div>`;
+  renderReference(info.reference);
+}
+
+function engineRunHtml(run) {
+  const totalPerThread = run.chunks.map((c) => c * run.rounds);
+  const bars = run.chunks.map((_, t) => {
+    const pctDone = totalPerThread[t] ? Math.min(100, (run.done[t] / totalPerThread[t]) * 100) : 0;
+    return `<div class="thread-bar"><span>${run.threads > 1 ? `T${t + 1}` : "T1"}</span><div class="bar big"><i style="width:${pctDone.toFixed(1)}%"></i></div><small>${pctDone.toFixed(0)}%</small></div>`;
+  }).join("");
+  const time = run.elapsed_ms != null ? `<strong>${secs(run.elapsed_ms)}</strong>` : '<strong class="muted">calculando…</strong>';
+  return `<div class="bench-run ${run.status}"><div class="bench-run-head"><span><strong>${esc(run.label)}</strong> · ${run.threads} thread${run.threads > 1 ? "s" : ""}</span>${time}</div>${bars}</div>`;
+}
+
+function engineResultHtml(job) {
+  if (job.status !== "done") return "";
+  const [seq, par] = job.runs;
+  return `<div class="speedup"><strong>${times(job.speedup)}</strong><span>mais rápido com ${par.threads} threads</span></div>
+    <ul class="bench-facts"><li>${intBR(job.params.actors)} atores × ${job.rounds} rodada(s) = ${intBR(seq.total)} avaliações em cada modo</li>
+    <li>${job.identical ? "✔ Ranking idêntico nos dois modos" : "✖ Rankings diferentes"} (checksum ${esc(par.checksum)})</li>
+    <li>Sequencial ${secs(seq.elapsed_ms)} · paralelo ${secs(par.elapsed_ms)}</li></ul>`;
+}
+
+function renderEngine(job, runsId, resultId, phaseId) {
+  if (phaseId) $(phaseId).textContent = job.status === "running" ? `Executando: ${job.phase}…` : job.status === "error" ? "" : "Concluído.";
+  $(runsId).innerHTML = (job.runs || []).map(engineRunHtml).join("");
+  $(resultId).innerHTML = engineResultHtml(job);
+}
+
+function pdfTimelineHtml(job) {
+  const tasks = job.tasks || [];
+  if (!tasks.length) return "";
+  const now = job.now_ms || 0;
+  const end = (task) => task.end_ms ?? now;
+  const groups = [["sequencial", "Um de cada vez"], ["paralelo", `${job.params.concurrency} ao mesmo tempo`]];
+  // Mesma escala para os dois grupos: a duração do maior deles.
+  const spans = groups.map(([mode]) => {
+    const items = tasks.filter((t) => t.mode === mode);
+    if (!items.length) return null;
+    const start = Math.min(...items.map((t) => t.start_ms));
+    return { start, span: Math.max(...items.map(end)) - start };
+  });
+  const scale = Math.max(1, ...spans.filter(Boolean).map((s) => s.span));
+  return groups.map(([mode, label], g) => {
+    const items = tasks.filter((t) => t.mode === mode);
+    if (!items.length) return "";
+    const { start, span } = spans[g];
+    const rows = job.params.files.map((file) => {
+      const t = items.find((item) => item.file === file);
+      if (!t) return `<div class="tl-row"><span>${esc(file)}</span><div class="tl-track"></div><small>na fila</small></div>`;
+      const left = ((t.start_ms - start) / scale) * 100, width = Math.max(0.8, ((end(t) - t.start_ms) / scale) * 100);
+      return `<div class="tl-row"><span>${esc(file)}</span><div class="tl-track"><i class="${t.status}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%"></i></div><small>${t.status === "error" ? "erro" : secs(end(t) - t.start_ms)}</small></div>`;
+    }).join("");
+    return `<div class="tl-group"><div class="bench-run-head"><span><strong>${esc(label)}</strong></span><strong>${secs(span)}</strong></div>${rows}</div>`;
+  }).join("");
+}
+
+function pdfResultHtml(job) {
+  if (job.status !== "done") return "";
+  return `<div class="speedup"><strong>${times(job.speedup)}</strong><span>mais rápido lendo ${job.params.concurrency} editais ao mesmo tempo</span></div>
+    <ul class="bench-facts"><li>${job.params.files.length} editais · um de cada vez ${secs(job.sequential_ms)} · ${job.params.concurrency} ao mesmo tempo ${secs(job.parallel_ms)}</li>
+    <li>Cada leitura é um processo separado do scraper (Python + pdfplumber)</li></ul>`;
+}
+
+function renderPdf(job, timelineId, resultId, phaseId) {
+  if (phaseId) $(phaseId).textContent = job.status === "running" ? `Executando: ${job.phase}…` : job.status === "error" ? "" : "Concluído.";
+  $(timelineId).innerHTML = pdfTimelineHtml(job);
+  $(resultId).innerHTML = pdfResultHtml(job);
+}
+
+function renderReference(ref) {
+  $("bench-reference-panel").hidden = !ref;
+  if (!ref) return;
+  const m = ref.machine || {};
+  $("bench-reference-note").textContent = `${m.description || "Computador local"} · ${m.cpus ?? "?"} CPUs disponíveis · medido em ${ref.measured_at || "?"}. Mesmos testes desta página, rodados no Docker.`;
+  if (ref.engine) renderEngine(ref.engine, "bench-reference-engine", "bench-reference-engine-result");
+  if (ref.pdf) renderPdf(ref.pdf, "bench-reference-pdf", "bench-reference-pdf-result");
+}
+
+async function runBench(kind) {
+  const engine = kind === "engine";
+  const button = $(engine ? "run-engine-bench" : "run-pdf-bench");
+  const messageId = engine ? "engine-message" : "pdf-message";
+  showMessage(messageId, "");
+  button.disabled = true;
+  try {
+    const body = engine ? { actors: Number($("bench-actors").value), threads: Number($("bench-threads").value) }
+      : { concurrency: Number($("bench-concurrency").value) };
+    let job = await api(engine ? "/bench/engine" : "/bench/pdfs", { method: "POST", body: JSON.stringify(body) });
+    const render = (j) => engine ? renderEngine(j, "engine-runs", "engine-result", "engine-phase") : renderPdf(j, "pdf-timeline", "pdf-result", "pdf-phase");
+    render(job);
+    while (job.status === "running") {
+      await new Promise((resolve) => setTimeout(resolve, engine ? 150 : 250));
+      job = await api(`/bench/jobs/${job.id}`);
+      render(job);
+    }
+    if (job.status === "error") showMessage(messageId, job.error || "O teste falhou.");
+  } catch (error) { showMessage(messageId, error.message); }
+  finally { button.disabled = false; }
 }
 
 function quickAction(event) {
@@ -475,6 +595,9 @@ async function initialize() {
   $("auth-mode").addEventListener("click", () => setAuthMode(state.mode === "login" ? "register" : "login"));
   $("logout").addEventListener("click", async () => { try { await api("/auth/logout", { method: "POST" }); } catch {} state.token = null; state.user = null; sessionStorage.removeItem("ariano_token"); showAuth(); });
   $("nav-overview").addEventListener("click", () => switchView("overview"));
+  $("nav-performance").addEventListener("click", () => switchView("performance"));
+  $("run-engine-bench").addEventListener("click", () => runBench("engine"));
+  $("run-pdf-bench").addEventListener("click", () => runBench("pdf"));
   $("overview-new-demand").addEventListener("click", () => { switchView("demands"); startDemand(); });
   $("overview-all-demands").addEventListener("click", () => switchView("demands"));
   $("overview-demands").addEventListener("click", (event) => { const button = event.target.closest("button[data-demand]"); if (button) { switchView("demands"); openDemand(Number(button.dataset.demand)); } });

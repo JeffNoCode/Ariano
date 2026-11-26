@@ -1,0 +1,178 @@
+{
+ "machine": {
+  "description": "Computador do Jefferson (Docker Desktop)",
+  "cpus": 8,
+  "cpu_quota": null
+ },
+ "measured_at": "26/11/2026",
+ "engine": {
+  "id": "e2c612e418ec",
+  "kind": "engine",
+  "params": {
+   "actors": 200000,
+   "threads": 8
+  },
+  "status": "done",
+  "phase": "concluído",
+  "error": null,
+  "started_at": 1795666392.8998404,
+  "rounds": 9,
+  "calibration_ms": 450.59765625,
+  "runs": [
+   {
+    "label": "Sequencial",
+    "threads": 1,
+    "chunks": [
+     200000
+    ],
+    "rounds": 9,
+    "rounds_done": 9,
+    "status": "done",
+    "done": [
+     1800000
+    ],
+    "total": 1800000,
+    "elapsed_ms": 2274.435546875,
+    "checksum": "380a80bc2e47adfd",
+    "passed": 200000
+   },
+   {
+    "label": "Paralelo",
+    "threads": 8,
+    "chunks": [
+     25000,
+     25000,
+     25000,
+     25000,
+     25000,
+     25000,
+     25000,
+     25000
+    ],
+    "rounds": 9,
+    "rounds_done": 9,
+    "status": "done",
+    "done": [
+     225000,
+     225000,
+     225000,
+     225000,
+     225000,
+     225000,
+     225000,
+     225000
+    ],
+    "total": 1800000,
+    "elapsed_ms": 599.88330078125,
+    "checksum": "380a80bc2e47adfd",
+    "passed": 200000
+   }
+  ],
+  "speedup": 3.791463346142357,
+  "identical": true,
+  "tasks": [],
+  "sequential_ms": null,
+  "parallel_ms": null,
+  "par_offset_ms": null
+ },
+ "pdf": {
+  "id": "702a1fa98c0d",
+  "kind": "pdf",
+  "params": {
+   "concurrency": 2,
+   "files": [
+    "edital_a.pdf",
+    "edital_b.pdf",
+    "edital_c.pdf",
+    "edital_d.pdf"
+   ]
+  },
+  "status": "done",
+  "phase": "concluído",
+  "error": null,
+  "started_at": 1795666396.3036668,
+  "rounds": null,
+  "calibration_ms": null,
+  "runs": [],
+  "speedup": 1.6118339424481525,
+  "identical": null,
+  "tasks": [
+   {
+    "mode": "sequencial",
+    "file": "edital_a.pdf",
+    "status": "done",
+    "start_ms": 0.00620000002982124,
+    "end_ms": 1754.151079000053,
+    "competencies": 0,
+    "error": null
+   },
+   {
+    "mode": "sequencial",
+    "file": "edital_b.pdf",
+    "status": "done",
+    "start_ms": 1754.1570790000378,
+    "end_ms": 3275.840988000027,
+    "competencies": 0,
+    "error": null
+   },
+   {
+    "mode": "sequencial",
+    "file": "edital_c.pdf",
+    "status": "done",
+    "start_ms": 3275.8455880000383,
+    "end_ms": 4721.920533999992,
+    "competencies": 0,
+    "error": null
+   },
+   {
+    "mode": "sequencial",
+    "file": "edital_d.pdf",
+    "status": "done",
+    "start_ms": 4721.924435000005,
+    "end_ms": 6305.367774000047,
+    "competencies": 1,
+    "error": null
+   },
+   {
+    "mode": "paralelo",
+    "file": "edital_a.pdf",
+    "status": "done",
+    "start_ms": 6305.736415000069,
+    "end_ms": 8319.815534999976,
+    "competencies": 0,
+    "error": null
+   },
+   {
+    "mode": "paralelo",
+    "file": "edital_b.pdf",
+    "status": "done",
+    "start_ms": 6306.201466000061,
+    "end_ms": 8222.821890999967,
+    "competencies": 0,
+    "error": null
+   },
+   {
+    "mode": "paralelo",
+    "file": "edital_c.pdf",
+    "status": "done",
+    "start_ms": 8222.839291000015,
+    "end_ms": 10057.00843300008,
+    "competencies": 0,
+    "error": null
+   },
+   {
+    "mode": "paralelo",
+    "file": "edital_d.pdf",
+    "status": "done",
+    "start_ms": 8319.879038000068,
+    "end_ms": 10217.037241000071,
+    "competencies": 1,
+    "error": null
+   }
+  ],
+  "sequential_ms": 6305.370074999928,
+  "parallel_ms": 3911.9228780000403,
+  "par_offset_ms": 6305.375475000005,
+  "now_ms": 10407.59970600004
+ }
+}
