@@ -15,11 +15,18 @@ make valgrind   # opcional, se valgrind estiver instalado
 include/domain.h   enums + structs de domínio e regras de ownership
 include/matcher.h  matcher_run (1 ator × 1 demanda), MatchConfig, validadores
 include/batch.h    batch_match (1 demanda × N atores): threshold, ordenação, top_k
+include/parallel.h batch_match_parallel: mesmo resultado de batch_match, em N pthreads
+include/bench.h    base sintética determinística + medição de tempo (página Desempenho)
 include/report.h   impressão legível (depuração)
 include/alloc.h    (interno) wrapper de calloc com injeção de falha nos testes
-src/               domain.c matcher.c batch.c report.c alloc.c main.c (demo)
-tests/             test_matcher.c
+src/               domain.c matcher.c batch.c parallel.c bench.c report.c alloc.c
+                   main.c (demo) bench_main.c (make bench)
+tests/             test_matcher.c (sequencial) test_parallel.c (paralelo == sequencial)
 ```
+
+`make test` roda a suíte original, a de equivalência do paralelo (ASan/UBSan) e
+a mesma sob ThreadSanitizer. `make bench` mede 1, 2, 4 e 8 threads. Detalhes,
+números e a Lei de Amdahl aplicada: [docs/PARALELISMO.md](../../docs/PARALELISMO.md).
 
 ## 1. Semântica das relações (`source → target`)
 
