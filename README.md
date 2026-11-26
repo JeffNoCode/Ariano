@@ -1,5 +1,7 @@
 # ARIANO
 
+**Release Candidate:** [v1.0.0-rc.1](https://github.com/JeffNoCode/Ariano/tree/v1.0.0-rc.1)
+
 > **Novo no projeto?** Comece pelo [COMO_FUNCIONA.md](COMO_FUNCIONA.md), o passo a
 > passo do fluxo completo. Para publicar online, veja [docs/DEPLOY.md](docs/DEPLOY.md).
 > Paralelismo (threads no motor em C, processos no scraper) e a página
@@ -8,6 +10,9 @@
 Projeto em três módulos: um **pipeline de extração** que transforma editais em PDF
 num JSON estruturado, um **motor de matching em C** que pontua a compatibilidade
 entre atores e demandas, e uma **API** que integra os módulos ao PostgreSQL.
+
+O objetivo é reduzir a triagem manual de editais e explicar a compatibilidade
+entre oportunidades de inovação e as competências cadastradas pelos atores.
 
 O scraper não sabe da existência do motor. O motor não lê arquivo, banco nem rede:
 recebe structs em memória e devolve resultados. A API coordena a extração, a
@@ -64,13 +69,34 @@ make shared     # libariano.so; no Windows, mingw32-make shared gera .dll
 
 Sem dependências externas: basta um compilador C17 (`gcc` ou `clang`).
 
-### API e banco
+### API, interface e banco com Docker
 
-Consulte o [guia da API](api/README.md). Na pasta `api`, execute
-`docker compose --profile full up -d --build --wait` e crie a conta
-administrativa conforme as instruções do guia. Ao subir, a API aplica sozinha o
-schema e as migrações (idempotentes). Abra `http://localhost:8000/app/` para usar
-o sistema; `GET /health` verifica banco e motor.
+Pré-requisitos: Git, Docker Engine ou Docker Desktop com Docker Compose v2
+e acesso ao repositório. O build instala as dependências Python, compila o
+motor C17 e usa PostgreSQL 16. A interface é servida pela própria API.
+
+```bash
+git clone https://github.com/JeffNoCode/Ariano.git
+cd Ariano
+git checkout v1.0.0-rc.1
+cd api
+docker compose --profile full up -d --build --wait
+docker compose --profile full exec api python -m scripts.bootstrap_admin --email admin@ariano.local
+```
+
+O comando de criação da conta solicita uma senha de pelo menos 12 caracteres.
+Abra a [interface local](http://localhost:8000/app/), o
+[Swagger](http://localhost:8000/docs) ou o [schema OpenAPI](http://localhost:8000/openapi.json).
+
+O Compose usa o serviço `db` e guarda o PostgreSQL no volume `ariano_pgdata`.
+A API aplica o schema e as migrações idempotentes na inicialização. Para mudar
+as portas no host, defina `ARIANO_API_PORT` (8000) e `ARIANO_DB_PORT` (5432)
+antes de subir. O PostgreSQL é publicado apenas em loopback no host, e a API
+se conecta internamente a `db:5432`. Em instalação fora do Compose, configure
+`DATABASE_URL` com a conexão PostgreSQL do ambiente.
+
+Consulte a [referência HTTP](docs/API.md), o [guia da API](api/README.md)
+e o [registro da Release Candidate](docs/sprint10/README.md).
 
 ### Online
 
@@ -129,6 +155,25 @@ Implementação, endpoints `/bench/*` e como medir de novo:
   os testes de API, ABI e navegação, incluindo os roteiros da Sprint 09.
 - **Ainda não existe:** scraping remoto (`pdf/downloader.py` está reservado
   para essa etapa). A autenticação local ainda precisa de reforços para produção.
+
+## Estrutura do repositório
+
+- `api/ariano_api/` contém a API FastAPI e a integração com o motor.
+- `api/static/` contém a interface web em HTML, CSS e JavaScript.
+- `api/db/` contém o schema, dados iniciais e migrações do PostgreSQL.
+- `scrapper-py/` contém o parser de editais e seus testes.
+- `Matching-ariano-c/` contém a biblioteca C17 e suas suítes.
+- `docs/` contém guias de execução, API e evidências do projeto.
+
+## Equipe
+
+| Integrante | Matrícula | Função |
+|---|---|---|
+| André Gomes dos Santos Filho | 01586077 | Desenvolvimento |
+| Guilherme Andrade de Aguiar | 01606498 | Desenvolvimento |
+| Jefferson de Souza Santo | 01608589 | Desenvolvimento |
+| Matheus Augusto de Moura | 01586638 | Desenvolvimento |
+| Raul Anthony de Sousa Muniz | 01633454 | Scrum Master e desenvolvimento |
 
 ## Licença
 

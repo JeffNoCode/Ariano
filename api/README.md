@@ -45,7 +45,6 @@ Na pasta `api`, execute:
 
 ```bash
 docker compose --profile full up -d --build --wait
-docker compose --profile full exec -T db psql -U ariano -d ariano -f /docker-entrypoint-initdb.d/03_auth.sql
 docker compose --profile full exec api python -m scripts.bootstrap_admin --email admin@ariano.local
 ```
 
@@ -54,11 +53,14 @@ em <http://localhost:8000/app/> com essa conta; a documentação da API está em
 <http://localhost:8000/docs>. O cadastro público cria apenas contas `VIEWER`.
 Um administrador pode promover contas a `EDITOR` ou `ADMIN` na tela Usuários.
 
-O PostgreSQL aplica `schema.sql`, `seed.sql` e a migração de autenticação
-automaticamente **somente em um volume vazio**. O segundo comando é idempotente
-e também atualiza volumes existentes. Os dados anteriores não são apagados.
-Se a porta 8000 estiver ocupada, defina `ARIANO_API_PORT` antes de subir os
-serviços e use a porta escolhida nos testes.
+Em um volume novo, o PostgreSQL aplica os scripts de inicialização do Compose.
+Ao subir, a API aplica o schema e as migrações idempotentes, inclusive em um
+volume existente. Os dados anteriores permanecem no volume `ariano_pgdata`.
+Defina `ARIANO_API_PORT` ou `ARIANO_DB_PORT` para alterar as portas do host.
+A aplicação continua acessando o PostgreSQL pelo endereço interno `db:5432`.
+
+O [guia HTTP](../docs/API.md) lista rotas, papéis, parâmetros, respostas e
+exemplos. O arquivo gerado pela própria aplicação está em `/openapi.json`.
 
 Para repetir os testes em PowerShell, defina o e-mail da conta administrativa.
 Cada roteiro pedirá a senha sem exibi-la na tela:
