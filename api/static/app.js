@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { token: sessionStorage.getItem("ariano_token"), user: null, actors: [], tags: [], demands: [], documentId: null, currentDemand: null, editingDemand: null, editing: null, mode: "login" };
+let demandDetailRequest = 0;
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const actorTypes = { SOLVER: "Solucionador", STARTUP: "Startup", ORGANIZATION: "Organização", GOVERNMENT_AGENCY: "Órgão público" };
 const actorStatuses = { ACTIVE: "Ativo", INACTIVE: "Inativo", SUSPENDED: "Suspenso" };
@@ -55,6 +56,7 @@ function showMessage(id, message) {
 }
 
 function showAuth() {
+  demandDetailRequest++;
   $("app-view").hidden = true;
   $("auth-view").hidden = false;
   document.title = "ARIANO | Acesso";
@@ -80,6 +82,7 @@ function showApp() {
 const views = { overview: "Visão geral", demands: "Oportunidades", actors: "Atores", performance: "Desempenho", history: "Histórico", users: "Usuários" };
 
 function switchView(view) {
+  if (view !== "demands") demandDetailRequest++;
   Object.keys(views).forEach((name) => {
     $(`${name}-section`).hidden = view !== name;
     $(`nav-${name}`).classList.toggle("active", view === name);
@@ -400,6 +403,7 @@ function quickAction(event) {
 }
 
 function showDemandPanel(panel) {
+  if (panel !== "detail") demandDetailRequest++;
   ["list", "create", "detail"].forEach((name) => { $(`demand-${name}-view`).hidden = panel !== name; });
 }
 
@@ -592,10 +596,18 @@ async function saveDemand(event) {
 }
 
 async function openDemand(id) {
+  const request = ++demandDetailRequest;
   try {
     await loadTags();
     const demand = await api(`/demands/${id}`);
+    if (request !== demandDetailRequest) return;
+    const [document, rows] = await Promise.all([
+      demand.document_id ? api(`/documents/${demand.document_id}`) : null,
+      api(`/demands/${id}/matches?limit=500`),
+    ]);
+    if (request !== demandDetailRequest) return;
     state.currentDemand = demand;
+    $("run-ranking").disabled = false;
     const inactive = ["CLOSED", "CANCELLED"].includes(demand.status);
     $("run-ranking").hidden = inactive || state.user.role === "VIEWER";
     $("ranking-inactive").hidden = !inactive || state.user.role === "VIEWER";
@@ -603,15 +615,17 @@ async function openDemand(id) {
     $("detail-subtitle").textContent = `Demanda #${demand.id} · ${demandStatuses[demand.status] || demand.status}`;
     $("demand-facts").innerHTML = `<div><dt>Prazo</dt><dd>${demand.deadline ? esc(new Date(`${demand.deadline}T12:00:00`).toLocaleDateString("pt-BR")) : "Não informado"}</dd></div><div><dt>Orçamento</dt><dd>${demand.budget == null ? "Não informado" : esc(Number(demand.budget).toLocaleString("pt-BR", { style: "currency", currency: demand.currency || "BRL" }))}</dd></div><div><dt>Descrição</dt><dd>${esc(demand.description || "Não informada")}</dd></div>`;
     $("detail-tags").innerHTML = demand.tags.map((tag) => `<span>${esc(tagName(tag.tag_id))} · ${tag.tag_type === "REQUIRED" ? "Obrigatória" : "Desejável"} · peso ${esc(tag.weight)}</span>`).join("");
-    if (demand.document_id) {
-      const document = await api(`/documents/${demand.document_id}`);
+    if (document) {
       $("detail-document").innerHTML = `<strong>Documento vinculado</strong><p>${esc(document.title || "PDF processado")} · #${document.id}</p>`;
       $("detail-document").hidden = false;
     } else $("detail-document").hidden = true;
     showMessage("ranking-message", "");
-    await loadRanking(id);
+    renderRanking(rows);
+    renderDemandKpis(demand, rows);
     showDemandPanel("detail");
-  } catch (error) { notify(error.message); }
+  } catch (error) {
+    if (request === demandDetailRequest) notify(error.message);
+  }
 }
 
 function tagName(id) {
@@ -663,24 +677,27 @@ function renderRanking(rows) {
   if (rows.length) selectRankingRow(0); else renderScorePanel(null);
 }
 
-async function loadRanking(id) {
-  const rows = await api(`/demands/${id}/matches?limit=500`);
-  renderRanking(rows);
-  if (state.currentDemand?.id === id) renderDemandKpis(state.currentDemand, rows);
-}
-
 async function runRanking() {
-  if (!state.currentDemand) return;
+  const demand = state.currentDemand;
+  if (!demand) return;
+  const request = demandDetailRequest;
   const button = $("run-ranking");
   button.disabled = true;
   showMessage("ranking-message", "");
   try {
-    await api(`/demands/${state.currentDemand.id}/match`, { method: "POST", body: JSON.stringify({ persist: true, threshold: 0.001 }) });
-    await loadRanking(state.currentDemand.id);
+    await api(`/demands/${demand.id}/match`, { method: "POST", body: JSON.stringify({ persist: true, threshold: 0.001 }) });
+    if (request !== demandDetailRequest) return;
+    const rows = await api(`/demands/${demand.id}/matches?limit=500`);
+    if (request !== demandDetailRequest) return;
+    renderRanking(rows);
+    renderDemandKpis(demand, rows);
     await loadDemands();
-    notify("Ranking calculado e salvo.");
-  } catch (error) { showMessage("ranking-message", error.message); }
-  finally { button.disabled = false; }
+    if (request === demandDetailRequest) notify("Ranking calculado e salvo.");
+  } catch (error) {
+    if (request === demandDetailRequest) showMessage("ranking-message", error.message);
+  } finally {
+    if (request === demandDetailRequest) button.disabled = false;
+  }
 }
 
 async function initialize() {
