@@ -1,6 +1,8 @@
 import hashlib
+import json
 from io import BytesIO
-from subprocess import TimeoutExpired
+from pathlib import Path
+from subprocess import CompletedProcess, TimeoutExpired
 from unittest.mock import Mock
 
 import pytest
@@ -41,3 +43,21 @@ def test_ingest_reports_subprocess_timeout(monkeypatch):
         main.ingest_document(UploadFile(BytesIO(b"%PDF-1.7 fixture")), {"id": 1}, Mock())
 
     assert error.value.status_code == 504
+
+@pytest.mark.parametrize(("filename", "expected"), [(r"C:\documentos\edital.pdf", "edital.pdf"), ("..", "upload.pdf")])
+def test_scraper_isolates_temp_filename(monkeypatch, tmp_path, filename, expected):
+    service = main.document_service
+    monkeypatch.setattr(service, "SCRAPER_DIR", tmp_path)
+
+    def fake_parser(args, **kwargs):
+        input_path = Path(args[2])
+        assert input_path.name == "upload.pdf"
+        assert input_path.read_bytes() == b"%PDF-1.7 fixture"
+        output = Path(args[-1]) / "upload.json"
+        output.write_text(json.dumps({"processing_metadata": {"source_file": str(input_path)}}))
+        return CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(service.subprocess, "run", fake_parser)
+    result = service.run_scraper(b"%PDF-1.7 fixture", filename)
+
+    assert result["processing_metadata"]["source_file"] == expected

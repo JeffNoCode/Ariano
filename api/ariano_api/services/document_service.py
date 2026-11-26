@@ -31,7 +31,7 @@ def run_scraper(pdf_bytes: bytes, filename: str = "upload.pdf") -> dict:
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-        pdf_path = tmp_path / (Path(filename).name or "upload.pdf")
+        pdf_path = tmp_path / "upload.pdf"
         pdf_path.write_bytes(pdf_bytes)
         out_dir = tmp_path / "out"
         out_dir.mkdir()
@@ -52,4 +52,10 @@ def run_scraper(pdf_bytes: bytes, filename: str = "upload.pdf") -> dict:
         produced = sorted(out_dir.glob("*.json"))
         if not produced:
             raise ScraperError("o scraper terminou com sucesso mas não gerou JSON", 0)
-        return json.loads(produced[0].read_text(encoding="utf-8"))
+        payload = json.loads(produced[0].read_text(encoding="utf-8"))
+        basename = Path(filename.replace("\\", "/")).name
+        basename = "".join(char for char in basename if char.isprintable()).strip()
+        payload["processing_metadata"]["source_file"] = (
+            basename if basename not in ("", ".", "..") else pdf_path.name
+        )
+        return payload
