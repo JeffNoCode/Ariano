@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ariano
       POSTGRES_DB: ariano
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${ARIANO_DB_PORT:-5432}:5432"
     volumes:
       - ariano_pgdata:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro

@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ARIANO API",
-    version="0.3.0",
+    version="1.0.0-rc.1",
     description=API_DESCRIPTION,
     lifespan=lifespan,
 )

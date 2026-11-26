@@ -28,7 +28,7 @@
     <aside class="sidebar">
       <div class="sidebar-brand">ARIANO<small>Inteligência de oportunidades</small></div>
       <nav aria-label="Navegação principal">
-        <button class="nav-item active" id="nav-overview" type="button">Visão geral</button>
+        <button class="nav-item active" id="nav-overview" type="button" aria-current="page">Visão geral</button>
         <button class="nav-item" id="nav-demands" type="button">Oportunidades</button>
         <button class="nav-item" id="nav-actors" type="button">Atores</button>
         <button class="nav-item" id="nav-performance" type="button">Desempenho</button>
@@ -72,6 +72,7 @@
               <label>Criada de<input id="demand-date-from" type="date"></label>
               <label>Criada até<input id="demand-date-to" type="date"></label>
               <button id="refresh-demands" class="button secondary" type="button">Atualizar</button>
+              <button id="clear-demand-filters" class="button secondary" type="button">Limpar filtros</button>
               <button id="export-demands" class="button secondary" type="button">Exportar CSV</button>
             </div>
             <p id="demand-query-message" class="message" role="alert" hidden></p>

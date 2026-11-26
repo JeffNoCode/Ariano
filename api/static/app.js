@@ -85,7 +85,10 @@ function switchView(view) {
   if (view !== "demands") demandDetailRequest++;
   Object.keys(views).forEach((name) => {
     $(`${name}-section`).hidden = view !== name;
-    $(`nav-${name}`).classList.toggle("active", view === name);
+    const item = $(`nav-${name}`);
+    item.classList.toggle("active", view === name);
+    if (view === name) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
   });
   $("page-label").textContent = views[view];
   document.title = `ARIANO | ${views[view]}`;
@@ -729,7 +732,13 @@ async function initialize() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(applyDemandFilters, 220);
   });
-  ["demand-status", "demand-date-from", "demand-date-to"].forEach((id) => $(id).addEventListener("change", applyDemandFilters));
+  const demandFilterFields = ["demand-status", "demand-date-from", "demand-date-to"];
+  demandFilterFields.forEach((id) => $(id).addEventListener("change", applyDemandFilters));
+  $("clear-demand-filters").addEventListener("click", () => {
+    for (const id of ["demand-search", ...demandFilterFields]) $(id).value = "";
+    applyDemandFilters();
+    $("demand-search").focus();
+  });
   $("export-demands").addEventListener("click", exportDemands);
   $("demand-prev").addEventListener("click", () => { demandOffset -= demandPageSize; loadDemands(); });
   $("demand-next").addEventListener("click", () => { demandOffset += demandPageSize; loadDemands(); });
