@@ -248,3 +248,10 @@ dialog h3{font-size:14px;margin:20px 0 10px}
 @keyframes tl-move{to{background-position:22px 0}}
 #bench-reference-panel .bench-timeline{margin-top:14px}
 @media(max-width:520px){.bench-controls label{flex:1 1 140px;min-width:0}.tl-row{grid-template-columns:70px minmax(0,1fr) 50px}.speedup strong{font-size:28px}}
+
+.report-toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:end;margin-bottom:15px}
+.report-toolbar label{display:grid;gap:4px;min-width:0}
+.report-toolbar label:first-child{flex:1 1 220px}
+.report-toolbar label input,.report-toolbar label select{width:100%}
+.report-pages:not([hidden]){display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px}
+.report-pages span{margin-right:auto}

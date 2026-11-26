@@ -216,3 +216,21 @@ aqui:
   competência antes de salvar. O scraper não decide essas regras sozinho.
 - **Paginação nos rankings** e cache de relações, se a base crescer.
 
+## Relatório de oportunidades e histórico
+
+Em **Oportunidades**, a busca por título ou solicitante pode ser combinada com
+a situação e o período de criação (datas inclusivas no fuso de Recife). A lista
+é paginada e **Exportar CSV** baixa todos os registros da mesma seleção, em
+UTF-8 com separador ponto e vírgula. A planilha inclui contagem de competências,
+quantidade de resultados gravados e melhor score por demanda.
+
+**Histórico** exibe as 100 operações mais recentes para editores e administradores.
+A API registra cadastro, atualização e exclusão de atores, criação de demandas,
+primeiro processamento de cada documento e cálculos de ranking com persistência.
+A migração `005_operation_log.sql` é aplicada na inicialização padrão da API e
+passa a registrar operações a partir desse momento. O evento é gravado na mesma
+transação da operação correspondente.
+
+As rotas de consulta são `GET /demands`, `GET /reports/opportunities.csv` e
+`GET /operations`. A consulta de oportunidades e o CSV aceitam `q`, `status`,
+`date_from` e `date_to`.

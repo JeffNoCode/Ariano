@@ -5,13 +5,14 @@ const actorTypes = { SOLVER: "Solucionador", STARTUP: "Startup", ORGANIZATION: "
 const actorStatuses = { ACTIVE: "Ativo", INACTIVE: "Inativo", SUSPENDED: "Suspenso" };
 const userRoles = { ADMIN: "Administrador", EDITOR: "Editor", VIEWER: "Leitor" };
 
-async function api(path, options = {}) {
+async function api(path, { download = false, ...options } = {}) {
   const headers = { ...(options.body && !(options.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) };
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
   let response;
   try { response = await fetch(path, { ...options, headers }); }
   catch { throw new Error("Não foi possível conectar ao sistema. Verifique se a aplicação está em execução."); }
   if (response.status === 204) return null;
+  if (response.ok && download) return response.blob();
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = typeof body.detail === "string" ? body.detail
@@ -68,13 +69,14 @@ function showApp() {
   $("new-demand").hidden = state.user.role === "VIEWER";
   $("run-ranking").hidden = state.user.role === "VIEWER";
   $("nav-users").hidden = state.user.role !== "ADMIN";
+  $("nav-history").hidden = state.user.role === "VIEWER";
   $("overview-new-demand").hidden = state.user.role === "VIEWER";
   document.querySelectorAll('[data-quick="demand"],[data-quick="actor"]').forEach((button) => { button.hidden = state.user.role === "VIEWER"; });
   document.title = "ARIANO | Visão geral";
   switchView("overview");
 }
 
-const views = { overview: "Visão geral", demands: "Oportunidades", actors: "Atores", performance: "Desempenho", users: "Usuários" };
+const views = { overview: "Visão geral", demands: "Oportunidades", actors: "Atores", performance: "Desempenho", history: "Histórico", users: "Usuários" };
 
 function switchView(view) {
   Object.keys(views).forEach((name) => {
@@ -87,6 +89,7 @@ function switchView(view) {
   if (view === "performance") loadPerformance().catch((error) => notify(error.message));
   if (view === "demands") { showDemandPanel("list"); loadDemands().catch((error) => notify(error.message)); }
   if (view === "actors") loadActors().catch((error) => notify(error.message));
+  if (view === "history") loadHistory().catch((error) => notify(error.message));
   if (view === "users") loadUsers().catch((error) => notify(error.message));
 }
 
@@ -399,14 +402,70 @@ function showDemandPanel(panel) {
   ["list", "create", "detail"].forEach((name) => { $(`demand-${name}-view`).hidden = panel !== name; });
 }
 
+const demandPageSize = 50;
+let demandOffset = 0;
+let demandRequest = 0;
+
+function opportunityQuery() {
+  const query = new URLSearchParams();
+  for (const [name, id] of [["q", "demand-search"], ["status", "demand-status"], ["date_from", "demand-date-from"], ["date_to", "demand-date-to"]]) {
+    const value = $(id).value.trim();
+    if (value) query.set(name, value);
+  }
+  return query;
+}
+
 async function loadDemands() {
-  state.demands = await api("/demands?limit=500");
-  renderDemands();
+  const request = ++demandRequest;
+  const query = opportunityQuery();
+  query.set("limit", demandPageSize + 1);
+  query.set("offset", demandOffset);
+  showMessage("demand-query-message", "");
+  try {
+    const rows = await api(`/demands?${query}`);
+    if (request !== demandRequest) return;
+    state.demands = rows.slice(0, demandPageSize);
+    $("demand-prev").disabled = demandOffset === 0;
+    $("demand-next").disabled = rows.length <= demandPageSize;
+    $("demand-page-label").textContent = state.demands.length
+      ? `Registros ${demandOffset + 1} a ${demandOffset + state.demands.length}`
+      : "Nenhum registro nesta página";
+    $("demand-pages").hidden = demandOffset === 0 && rows.length <= demandPageSize;
+    renderDemands();
+  } catch (error) {
+    if (request !== demandRequest) return;
+    $("demand-rows").replaceChildren();
+    $("demand-empty").hidden = true;
+    $("demand-pages").hidden = true;
+    showMessage("demand-query-message", error.message);
+  }
+}
+
+async function exportDemands() {
+  const button = $("export-demands");
+  button.disabled = true;
+  try {
+    const blob = await api(`/reports/opportunities.csv?${opportunityQuery()}`, { download: true });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "oportunidades.csv";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) { notify(error.message); }
+  finally { button.disabled = false; }
+}
+
+async function loadHistory() {
+  const rows = await api("/operations?limit=100");
+  const actions = { CREATE: "Cadastro", UPDATE: "Atualização", DELETE: "Exclusão", PROCESS: "Processamento", CALCULATE: "Cálculo" };
+  const entities = { ACTOR: "Ator", DEMAND: "Demanda", DOCUMENT: "Documento", RANKING: "Ranking da demanda" };
+  $("history-empty").hidden = rows.length > 0;
+  $("history-rows").innerHTML = rows.map((row) => `<tr><td data-label="Data e hora">${esc(new Date(row.created_at).toLocaleString("pt-BR"))}</td><td data-label="Usuário">${esc(row.user_name || "Conta removida")}</td><td data-label="Ação">${esc(actions[row.action] || row.action)}</td><td data-label="Registro">${esc(entities[row.entity] || row.entity)} #${esc(row.entity_id)}</td></tr>`).join("");
 }
 
 function renderDemands() {
-  const query = $("demand-search").value.trim().toLocaleLowerCase("pt-BR");
-  const rows = state.demands.filter((item) => `${item.title} ${item.requester_name || ""}`.toLocaleLowerCase("pt-BR").includes(query));
+  const rows = state.demands;
   $("demand-empty").hidden = rows.length > 0;
   $("demand-rows").innerHTML = rows.map((item) => `<tr><td data-label="Demanda"><strong>${esc(item.title)}</strong><br><small>#${item.id}${item.document_id ? " · PDF vinculado" : ""}</small></td><td data-label="Solicitante">${esc(item.requester_name || "Não informado")}</td><td data-label="Status">${statusChip(item.status)}</td><td data-label="Competências">${item.tag_count}</td><td data-label="Resultados">${item.match_count}${item.best_score == null ? "" : ` <small>· melhor ${score3(item.best_score)}</small>`}</td><td data-label="Ação" class="row-actions"><button type="button" data-demand="${item.id}">Abrir</button></td></tr>`).join("");
 }
@@ -606,8 +665,23 @@ async function initialize() {
   $("nav-demands").addEventListener("click", () => switchView("demands"));
   $("nav-actors").addEventListener("click", () => switchView("actors"));
   $("nav-users").addEventListener("click", () => switchView("users"));
-  $("refresh-demands").addEventListener("click", () => loadDemands().catch((error) => notify(error.message)));
-  $("demand-search").addEventListener("input", renderDemands);
+  $("nav-history").addEventListener("click", () => switchView("history"));
+  $("refresh-history").addEventListener("click", () => loadHistory().catch((error) => notify(error.message)));
+  $("refresh-demands").addEventListener("click", loadDemands);
+  let searchTimer;
+  const applyDemandFilters = () => {
+    clearTimeout(searchTimer);
+    demandOffset = 0;
+    loadDemands();
+  };
+  $("demand-search").addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyDemandFilters, 220);
+  });
+  ["demand-status", "demand-date-from", "demand-date-to"].forEach((id) => $(id).addEventListener("change", applyDemandFilters));
+  $("export-demands").addEventListener("click", exportDemands);
+  $("demand-prev").addEventListener("click", () => { demandOffset -= demandPageSize; loadDemands(); });
+  $("demand-next").addEventListener("click", () => { demandOffset += demandPageSize; loadDemands(); });
   $("demand-rows").addEventListener("click", (event) => { const button = event.target.closest("button[data-demand]"); if (button) openDemand(Number(button.dataset.demand)); });
   $("new-demand").addEventListener("click", startDemand);
   $("back-from-create").addEventListener("click", () => { showDemandPanel("list"); loadDemands().catch((error) => notify(error.message)); });

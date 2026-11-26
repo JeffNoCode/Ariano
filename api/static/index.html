@@ -32,6 +32,7 @@
         <button class="nav-item" id="nav-demands" type="button">Oportunidades</button>
         <button class="nav-item" id="nav-actors" type="button">Atores</button>
         <button class="nav-item" id="nav-performance" type="button">Desempenho</button>
+        <button class="nav-item" id="nav-history" type="button" hidden>Histórico</button>
         <button class="nav-item" id="nav-users" type="button" hidden>Usuários</button>
       </nav>
       <div class="sidebar-bottom"><span id="signed-user"></span><button id="logout" type="button">Sair</button></div>
@@ -65,9 +66,22 @@
         <section id="demands-section" hidden>
           <div id="demand-list-view">
             <div class="section-heading"><div><h1>Oportunidades</h1><p>Demandas e resultados registrados</p></div><button id="new-demand" class="button primary" type="button">Nova demanda</button></div>
-            <div class="toolbar"><input id="demand-search" type="search" placeholder="Buscar demanda" aria-label="Buscar demanda"><button id="refresh-demands" class="button secondary" type="button">Atualizar</button></div>
+            <div class="report-toolbar" aria-label="Filtros de oportunidades">
+              <label>Busca<input id="demand-search" type="search" placeholder="Título ou solicitante" maxlength="180"></label>
+              <label>Situação<select id="demand-status"><option value="">Todas</option><option value="OPEN">Aberta</option><option value="EVALUATING">Em análise</option><option value="CLOSED">Encerrada</option><option value="CANCELLED">Cancelada</option></select></label>
+              <label>Criada de<input id="demand-date-from" type="date"></label>
+              <label>Criada até<input id="demand-date-to" type="date"></label>
+              <button id="refresh-demands" class="button secondary" type="button">Atualizar</button>
+              <button id="export-demands" class="button secondary" type="button">Exportar CSV</button>
+            </div>
+            <p id="demand-query-message" class="message" role="alert" hidden></p>
             <div class="table-wrap demand-table"><table><thead><tr><th>Demanda</th><th>Solicitante</th><th>Status</th><th>Competências</th><th>Resultados</th><th>Ação</th></tr></thead><tbody id="demand-rows"></tbody></table></div>
             <p id="demand-empty" class="empty" hidden>Nenhuma demanda encontrada.</p>
+            <div id="demand-pages" class="report-pages" hidden>
+              <span id="demand-page-label" aria-live="polite"></span>
+              <button id="demand-prev" class="button secondary" type="button">Anterior</button>
+              <button id="demand-next" class="button secondary" type="button">Próxima</button>
+            </div>
           </div>
           <div id="demand-create-view" hidden>
             <div class="section-heading"><div><h1>Nova demanda</h1><p>Revise o edital e defina o que será considerado no ranking</p></div><button id="back-from-create" class="button secondary" type="button">Voltar</button></div>
@@ -131,6 +145,11 @@
             <div id="bench-reference-pdf" class="bench-timeline"></div>
             <div id="bench-reference-pdf-result" class="bench-result"></div>
           </div>
+        </section>
+        <section id="history-section" hidden>
+          <div class="section-heading"><div><h1>Histórico de operações</h1><p>Últimas 100 operações registradas</p></div><button id="refresh-history" class="button secondary" type="button">Atualizar</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Registro</th></tr></thead><tbody id="history-rows"></tbody></table></div>
+          <p id="history-empty" class="empty" hidden>Nenhuma operação registrada.</p>
         </section>
         <section id="users-section" hidden>
           <div class="section-heading"><div><h1>Usuários</h1><p>Perfis de acesso</p></div></div>
